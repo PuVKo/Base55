@@ -9,6 +9,7 @@
     "dev:vite": "vite --port 5174 --strictPort",
     "dev:server": "npm run dev --prefix server",
     "build": "vite build",
+    "start": "npm run start --prefix server",
     "preview": "vite preview",
     "db:push": "npm run db:push --prefix server",
     "db:migrate": "npm run db:migrate --prefix server",
