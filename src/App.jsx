@@ -1,7 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { addMonths, addYears, format, startOfMonth, startOfYear } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { AlertCircle, CalendarRange, LayoutTemplate, ListFilter, PanelLeft, Plus, RefreshCw } from 'lucide-react';
+import {
+  AlertCircle,
+  CalendarRange,
+  LayoutTemplate,
+  ListFilter,
+  MoreVertical,
+  PanelLeft,
+  Plus,
+  RefreshCw,
+} from 'lucide-react';
 import { BookingModal } from '@/components/BookingModal';
 import { CalendarView } from '@/components/CalendarView';
 import { DashboardPeriodPanelContent } from '@/components/DashboardPeriodPanel';
@@ -78,6 +87,22 @@ export default function App({ currentUser = null }) {
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(() => readSidebarOpen());
   const [settingsTab, setSettingsTab] = useState(/** @type {'profile' | 'fields'} */ ('fields'));
   const [toast, setToast] = useState('');
+  const [calendarMobileMenuOpen, setCalendarMobileMenuOpen] = useState(false);
+  const calendarMobileMenuRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+
+  useEffect(() => {
+    if (!calendarMobileMenuOpen) return;
+    function onDoc(/** @type {MouseEvent | TouchEvent} */ e) {
+      const el = calendarMobileMenuRef.current;
+      if (el && e.target instanceof Node && !el.contains(e.target)) setCalendarMobileMenuOpen(false);
+    }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('touchstart', onDoc, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('touchstart', onDoc);
+    };
+  }, [calendarMobileMenuOpen]);
 
   function setMainView(/** @type {string} */ view) {
     setActiveView(view);
@@ -207,25 +232,40 @@ export default function App({ currentUser = null }) {
   }
 
   if (error) {
+    const errText = String(error.message ?? '');
+    const looksLikeNetwork =
+      /failed to fetch|networkerror|load failed|econnrefused|connection refused|cors/i.test(errText);
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-notion-bg text-notion-muted px-6 text-center max-w-lg mx-auto">
-        <p className="text-white font-medium mb-2">Нет связи с API</p>
-        <p className="text-sm mb-4">
-          Проверьте, что бэкенд запущен и в <span className="text-notion-muted">server/.env</span> задан корректный{' '}
-          <span className="text-notion-muted">DATABASE_URL</span> (PostgreSQL: локально или облако Timeweb — см.{' '}
-          <span className="text-notion-muted">server/.env.example</span>). В <span className="text-notion-muted">server/</span>{' '}
-          нужен <span className="text-notion-muted">npm install</span>.
-        </p>
+        <p className="text-white font-medium mb-2">Не удалось связаться с API</p>
+        {looksLikeNetwork ? (
+          <p className="text-sm mb-4 text-left w-full">
+            Чаще всего не запущен сервер на порту <span className="text-notion-muted">3001</span> или открыт не тот
+            адрес фронта. Запустите из корня проекта <span className="text-notion-muted">npm run dev</span> и откройте{' '}
+            <span className="text-notion-muted">http://localhost:5174</span> — запросы{' '}
+            <span className="text-notion-muted">/api</span> проксируются на бэкенд.
+          </p>
+        ) : (
+          <p className="text-sm mb-4 text-left w-full">
+            Если это ошибка базы: в <span className="text-notion-muted">server/.env</span> проверьте{' '}
+            <span className="text-notion-muted">DATABASE_URL</span>. Локально обычно достаточно SQLite:{' '}
+            <span className="text-notion-muted">DATABASE_URL=&quot;file:./dev.db&quot;</span> (файл рядом со схемой в{' '}
+            <span className="text-notion-muted">server/prisma/sqlite/</span>). Для облака Timeweb — строка{' '}
+            <span className="text-notion-muted">postgresql://…</span>, см. <span className="text-notion-muted">server/.env.example</span>.
+          </p>
+        )}
         <code className="text-xs text-left w-full bg-notion-surface border border-notion-border rounded-lg p-3 text-emerald-200/90 whitespace-pre-wrap">
           cd /path/to/Base56{'\n'}
           npm install && npm install --prefix server{'\n'}
-          npm run dev:only
+          npm run dev
         </code>
-        <p className="text-xs mt-4 text-notion-muted/80">
-          С миграциями в начале: <span className="text-notion-muted">npm run dev</span> (если падает — оставьте{' '}
-          <span className="text-notion-muted">dev:only</span>).
+        <p className="text-xs mt-4 text-notion-muted/80 text-left w-full">
+          Альтернатива без миграций в начале: <span className="text-notion-muted">npm run dev:only</span> (если{' '}
+          <span className="text-notion-muted">npm run dev</span> падает на Prisma).
         </p>
-        <p className="text-xs mt-2 text-rose-300/90">{String(error.message)}</p>
+        <p className="text-xs mt-3 text-rose-300/90 break-words w-full text-left" role="status">
+          {errText}
+        </p>
       </div>
     );
   }
@@ -298,7 +338,114 @@ export default function App({ currentUser = null }) {
             </div>
           </div>
           {showMonthChrome ? (
-            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto sm:shrink-0 sm:justify-end">
+            <>
+              {activeView === 'calendar' ? (
+                <div className="md:hidden flex flex-row items-center justify-end gap-2 w-full shrink-0">
+                  <div className="relative shrink-0" ref={calendarMobileMenuRef}>
+                    <button
+                      type="button"
+                      onClick={() => setCalendarMobileMenuOpen((o) => !o)}
+                      aria-expanded={calendarMobileMenuOpen}
+                      aria-haspopup="menu"
+                      className="relative inline-flex items-center justify-center w-11 h-11 rounded-lg border border-notion-border text-notion-muted hover:bg-notion-hover hover:text-white transition-colors touch-manipulation"
+                      title="Ещё: фильтры, поля, итог"
+                    >
+                      <MoreVertical className="w-5 h-5" />
+                      {calendarFiltersActiveHint && !calendarFiltersOpen ? (
+                        <span
+                          className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-violet-400 shadow-sm"
+                          aria-hidden
+                        />
+                      ) : null}
+                    </button>
+                    {calendarMobileMenuOpen ? (
+                      <div
+                        className="absolute left-0 top-full z-[140] mt-1.5 w-[min(18rem,calc(100vw-1.5rem))] max-w-[calc(100vw-env(safe-area-inset-left,0px)-env(safe-area-inset-right,0px)-1.5rem)] origin-top-left rounded-xl border border-notion-border bg-notion-bg shadow-2xl py-1 text-sm"
+                        role="menu"
+                      >
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className={`relative flex w-full items-center gap-2 px-3 py-2.5 text-left font-medium touch-manipulation ${
+                            calendarFiltersOpen
+                              ? 'bg-violet-500/15 text-violet-100'
+                              : 'text-white hover:bg-notion-hover'
+                          }`}
+                          onClick={() => {
+                            setCalendarMobileMenuOpen(false);
+                            updateClientUi((prev) => {
+                              const next = !prev.calendarFiltersPanelOpen;
+                              return {
+                                ...prev,
+                                calendarFiltersPanelOpen: next,
+                                calendarTileFieldsPanelOpen: next ? false : prev.calendarTileFieldsPanelOpen,
+                              };
+                            });
+                          }}
+                        >
+                          <ListFilter className="w-4 h-4 shrink-0 opacity-90" />
+                          Фильтры
+                          {calendarFiltersActiveHint && !calendarFiltersOpen ? (
+                            <span className="absolute top-2 right-2.5 w-2 h-2 rounded-full bg-violet-400" aria-hidden />
+                          ) : null}
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className={`flex w-full items-center gap-2 px-3 py-2.5 text-left font-medium touch-manipulation ${
+                            calendarTileFieldsOpen
+                              ? 'bg-violet-500/15 text-violet-100'
+                              : 'text-white hover:bg-notion-hover'
+                          }`}
+                          onClick={() => {
+                            setCalendarMobileMenuOpen(false);
+                            updateClientUi((prev) => {
+                              const next = !prev.calendarTileFieldsPanelOpen;
+                              return {
+                                ...prev,
+                                calendarTileFieldsPanelOpen: next,
+                                calendarFiltersPanelOpen: next ? false : prev.calendarFiltersPanelOpen,
+                              };
+                            });
+                          }}
+                        >
+                          <LayoutTemplate className="w-4 h-4 shrink-0 opacity-90" />
+                          Поля карточки
+                        </button>
+                        <div
+                          className="mx-2 my-1.5 rounded-lg border border-emerald-500/25 bg-emerald-950/35 px-2.5 py-2"
+                          role="presentation"
+                        >
+                          <span className="text-[9px] font-medium uppercase tracking-wide text-emerald-200/65">
+                            Итого за месяц
+                          </span>
+                          <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                            <span className="text-base font-semibold text-emerald-100 tabular-nums">
+                              {formatRub(monthTotalRub)}
+                            </span>
+                            <span className="text-[10px] text-emerald-200/40 tabular-nums">
+                              {monthBookings.length} {pluralRecordsRu(monthBookings.length)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openNew()}
+                    className="inline-flex flex-1 min-w-0 items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white text-notion-bg text-sm font-medium hover:bg-white/90 transition-colors shadow-sm touch-manipulation"
+                  >
+                    <Plus className="w-4 h-4 shrink-0" />
+                    Новая запись
+                  </button>
+                </div>
+              ) : null}
+              <div
+                className={`${
+                  activeView === 'calendar' ? 'hidden md:flex' : 'flex'
+                } flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto sm:shrink-0 sm:justify-end`}
+              >
               {activeView === 'gallery' || activeView === 'calendar' || activeView === 'table' ? (
                 <>
                   <button
@@ -465,6 +612,7 @@ export default function App({ currentUser = null }) {
                 Новая запись
               </button>
             </div>
+            </>
           ) : null}
         </header>
         {toast ? (
@@ -489,6 +637,7 @@ export default function App({ currentUser = null }) {
               fields={fields}
               onOpenBooking={openEdit}
               onCreateOnDate={openNew}
+              onMonthForDayChange={(d) => setMonthCursor(startOfMonth(d))}
               onMoveBooking={(id, nextDate) => {
                 const b = bookings.find((x) => x.id === id);
                 if (!b) return;

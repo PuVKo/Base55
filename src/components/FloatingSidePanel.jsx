@@ -7,10 +7,12 @@ import { X } from 'lucide-react';
  * @param {object} p
  * @param {boolean} p.open
  * @param {() => void} p.onClose
- * @param {string} p.title
+ * @param {string} [p.title] — если задан custom header, можно не передавать
+ * @param {import('react').ReactNode} [p.header] — заменяет строку заголовка (title + крестик)
+ * @param {string} [p.panelClassName] — доп. классы панели (например max-w-full на мобилке)
  * @param {import('react').ReactNode} p.children
  */
-export function FloatingSidePanel({ open, onClose, title, children }) {
+export function FloatingSidePanel({ open, onClose, title, header, panelClassName, children }) {
   useEffect(() => {
     if (!open) return;
     function onKey(e) {
@@ -45,7 +47,7 @@ export function FloatingSidePanel({ open, onClose, title, children }) {
         onClick={onClose}
       />
       <div
-        className="relative flex h-[100dvh] max-h-[100dvh] w-full max-w-md flex-col border-l border-notion-border bg-notion-bg shadow-2xl animate-[slideIn_.2s_ease-out]"
+        className={`relative flex h-[100dvh] max-h-[100dvh] w-full max-w-md flex-col border-l border-notion-border bg-notion-bg shadow-2xl animate-[slideIn_.2s_ease-out] ${panelClassName ?? ''}`}
         style={{
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           paddingTop: 'env(safe-area-inset-top, 0px)',
@@ -57,19 +59,23 @@ export function FloatingSidePanel({ open, onClose, title, children }) {
             to { transform: translateX(0); opacity: 1; }
           }
         `}</style>
-        <div className="flex items-center justify-between gap-3 border-b border-notion-border px-4 py-3 shrink-0">
-          <h2 id="floating-side-panel-title" className="text-base font-semibold text-white truncate">
-            {title}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex items-center justify-center rounded-lg border border-notion-border p-2 text-notion-muted hover:bg-notion-hover hover:text-white transition-colors shrink-0"
-            aria-label="Закрыть"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        {header ? (
+          <div className="shrink-0 border-b border-notion-border">{header}</div>
+        ) : (
+          <div className="flex items-center justify-between gap-3 border-b border-notion-border px-4 py-3 shrink-0">
+            <h2 id="floating-side-panel-title" className="text-base font-semibold text-white truncate">
+              {title}
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center justify-center rounded-lg border border-notion-border p-2 text-notion-muted hover:bg-notion-hover hover:text-white transition-colors shrink-0"
+              aria-label="Закрыть"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4">{children}</div>
       </div>
     </div>,
