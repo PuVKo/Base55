@@ -36,8 +36,10 @@ export function pgConnectionOptions(connectionString) {
   const needsSsl =
     /sslmode=(require|verify-ca|verify-full)/i.test(connectionString) ||
     connectionString.includes('twc1.net');
+  const timeouts = { connectionTimeoutMillis: 15_000, idleTimeoutMillis: 60_000 };
+
   if (!needsSsl) {
-    return { connectionString };
+    return { connectionString, ...timeouts };
   }
 
   const timewebHost = connectionString.includes('twc1.net');
@@ -48,17 +50,19 @@ export function pgConnectionOptions(connectionString) {
   if (relaxSsl) {
     return {
       ...base,
+      ...timeouts,
       ssl: { rejectUnauthorized: false },
     };
   }
   if (fs.existsSync(timewebCaPath)) {
     return {
       ...base,
+      ...timeouts,
       ssl: {
         ca: fs.readFileSync(timewebCaPath).toString(),
         rejectUnauthorized: true,
       },
     };
   }
-  return base;
+  return { ...base, ...timeouts };
 }

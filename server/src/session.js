@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -10,14 +11,29 @@ import { pgConnectionOptions } from './pgSslConfig.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+/** Стабильный секрет по env без вывода секрета в лог (Timeweb: иначе падение до listen = нет логов приложения). */
+function derivedProductionSessionSecret() {
+  const raw =
+    (process.env.DATABASE_URL ?? '').trim() ||
+    (process.env.APP_PUBLIC_URL ?? '').trim() ||
+    'base56-session-fallback';
+  return createHash('sha256').update(`base56-session-v1:${raw}`).digest('hex');
+}
+
 function sessionSecret() {
   const fromEnv = process.env.SESSION_SECRET?.trim();
   if (fromEnv && fromEnv.length >= 16) return fromEnv;
   if (process.env.NODE_ENV === 'production') {
-    console.error(
-      '[Base56] FATAL: задайте SESSION_SECRET (≥16 символов) в переменных приложения — иначе процесс не стартует.',
-    );
-    throw new Error('Задайте SESSION_SECRET (не короче 16 символов) для production');
+    try {
+      process.stderr.write(
+        '[Base56] WARN: SESSION_SECRET не задан или <16 символов — используется производный секрет (задайте SESSION_SECRET ≥16 в панели).\n',
+      );
+    } catch {
+      console.error(
+        '[Base56] WARN: SESSION_SECRET не задан — используется производный секрет (задайте SESSION_SECRET в панели).',
+      );
+    }
+    return derivedProductionSessionSecret();
   }
   return 'dev-base56-session-secret-not-for-production';
 }
