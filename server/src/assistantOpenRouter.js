@@ -13,6 +13,41 @@ const MAX_TOOL_ROUNDS = 5;
 const MAX_CLIENT_MESSAGES = 40;
 const LIST_FETCH_CAP = 200;
 
+/** Чтобы модель не «жила» в 2024 из обучения и знала локальное «сейчас». */
+function buildClockContextBlock() {
+  const tz = (process.env.ASSISTANT_TIMEZONE ?? 'Europe/Moscow').trim() || 'Europe/Moscow';
+  const now = new Date();
+  const iso = now.toISOString();
+  let yearInTz = String(now.getUTCFullYear());
+  let localHuman = iso;
+  try {
+    yearInTz = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric' }).format(now);
+    localHuman = now.toLocaleString('ru-RU', {
+      timeZone: tz,
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    // tz невалиден — остаётся UTC
+  }
+  return [
+    'Актуальные дата и время (всегда опирайся на этот блок, а не на «текущую дату» из данных обучения):',
+    `- UTC: ${iso}`,
+    `- По часовому поясу приложения (${tz}): ${localHuman}; год: ${yearInTz}.`,
+  ].join('\n');
+}
+
+/** Ограничение длины ответа (быстрее и дешевле; на tool-раундах тоже действует). */
+function resolveMaxOutputTokens() {
+  const raw = Number((process.env.ASSISTANT_MAX_OUTPUT_TOKENS ?? '1536').trim());
+  if (!Number.isFinite(raw)) return 1536;
+  return Math.min(8192, Math.max(256, Math.floor(raw)));
+}
+
 const TOOLS = [
   {
     type: 'function',
@@ -357,12 +392,14 @@ export async function handleAssistantChat(prisma, req, res) {
   const fieldsSummary = await buildFieldsSummary(prisma, userId);
 
   const systemContent = [
+    buildClockContextBlock(),
+    '',
     'Ты помощник в приложении Base56: записи клиентов (брони) с настраиваемыми полями.',
     'Поле даты записи: ключ date, формат YYYY-MM-DD.',
     `Доступные ключи полей пользователя: ${fieldsSummary}`,
     'Вызывай инструменты для чтения и изменения данных; не выдумывай id записей — получай их из list_bookings или get_booking.',
     'Удаляй записи (delete_booking) только если пользователь явно попросил удалить.',
-    'Отвечай по-русски, кратко, по существу.',
+    'Отвечай по-русски, кратко, по существу. Не расписывай длинные рассуждения — по возможности сразу инструменты или короткий ответ.',
   ].join('\n');
 
   /** @type {Record<string, string>[]} */
@@ -393,7 +430,8 @@ export async function handleAssistantChat(prisma, req, res) {
           messages,
           tools: TOOLS,
           tool_choice: 'auto',
-          temperature: 0.3,
+          temperature: 0.25,
+          max_tokens: resolveMaxOutputTokens(),
         }),
       });
     } catch (err) {
