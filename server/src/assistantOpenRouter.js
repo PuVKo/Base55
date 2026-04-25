@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
 /**
- * Модель с поддержкой tools (function calling) на маршрутах OpenRouter.
- * У llama-3.2-3b часто нет провайдера с tool use → «No endpoints found that support tool use».
- * Переопределение: ASSISTANT_MODEL в server/.env.
+ * Роутер бесплатных моделей OpenRouter с фильтром по фичам запроса (в т.ч. tool calling).
+ * Переопределение: ASSISTANT_MODEL в server/.env (например openai/gpt-4o-mini после пополнения кредитов).
+ * @see https://openrouter.ai/docs/guides/routing/routers/free-models-router
  */
-const DEFAULT_MODEL = 'openai/gpt-4o-mini';
+const DEFAULT_MODEL = 'openrouter/free';
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_CREDITS_URL = 'https://openrouter.ai/settings/credits';
 
