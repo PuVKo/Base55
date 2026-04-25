@@ -30,9 +30,13 @@ export function AssistantView() {
     setLoading(true);
     scrollToBottom();
     try {
+      const timezone =
+        typeof Intl !== 'undefined'
+          ? Intl.DateTimeFormat().resolvedOptions().timeZone || ''
+          : '';
       const data = await apiFetch('/api/assistant/chat', {
         method: 'POST',
-        body: JSON.stringify({ messages: nextThread }),
+        body: JSON.stringify({ messages: nextThread, timezone }),
       });
       const content =
         data && typeof data.message === 'object' && typeof data.message.content === 'string'

@@ -13,9 +13,31 @@ const MAX_TOOL_ROUNDS = 5;
 const MAX_CLIENT_MESSAGES = 40;
 const LIST_FETCH_CAP = 200;
 
-/** Чтобы модель не «жила» в 2024 из обучения и знала локальное «сейчас». */
-function buildClockContextBlock() {
-  const tz = (process.env.ASSISTANT_TIMEZONE ?? 'Europe/Moscow').trim() || 'Europe/Moscow';
+/** @param {string} tz */
+function isValidIanaTimeZone(tz) {
+  if (!tz || typeof tz !== 'string' || tz.length > 120) return false;
+  try {
+    Intl.DateTimeFormat('en', { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Приоритет: IANA из запроса клиента (браузер) → ASSISTANT_TIMEZONE → Europe/Moscow.
+ * @param {unknown} clientRaw
+ */
+function resolveAssistantTimeZone(clientRaw) {
+  const fromClient = typeof clientRaw === 'string' ? clientRaw.trim() : '';
+  if (fromClient && isValidIanaTimeZone(fromClient)) return fromClient;
+  const fromEnv = (process.env.ASSISTANT_TIMEZONE ?? '').trim();
+  if (fromEnv && isValidIanaTimeZone(fromEnv)) return fromEnv;
+  return 'Europe/Moscow';
+}
+
+/** Чтобы модель не «жила» в 2024 из обучения и знала локальное «сейчас» пользователя. */
+function buildClockContextBlock(tz) {
   const now = new Date();
   const iso = now.toISOString();
   let yearInTz = String(now.getUTCFullYear());
@@ -32,12 +54,12 @@ function buildClockContextBlock() {
       minute: '2-digit',
     });
   } catch {
-    // tz невалиден — остаётся UTC
+    // не должно случиться при валидированном tz
   }
   return [
     'Актуальные дата и время (всегда опирайся на этот блок, а не на «текущую дату» из данных обучения):',
     `- UTC: ${iso}`,
-    `- По часовому поясу приложения (${tz}): ${localHuman}; год: ${yearInTz}.`,
+    `- По часовому поясу пользователя (${tz}, из настроек браузера/устройства): ${localHuman}; год: ${yearInTz}.`,
   ].join('\n');
 }
 
@@ -388,11 +410,12 @@ export async function handleAssistantChat(prisma, req, res) {
   }
 
   const modelId = (process.env.ASSISTANT_MODEL ?? '').trim() || DEFAULT_MODEL;
+  const assistantTz = resolveAssistantTimeZone(body.timezone ?? body.timeZone);
   const allowedKeys = await loadAllowedFieldKeys(prisma, userId);
   const fieldsSummary = await buildFieldsSummary(prisma, userId);
 
   const systemContent = [
-    buildClockContextBlock(),
+    buildClockContextBlock(assistantTz),
     '',
     'Ты помощник в приложении Base56: записи клиентов (брони) с настраиваемыми полями.',
     'Поле даты записи: ключ date, формат YYYY-MM-DD.',
