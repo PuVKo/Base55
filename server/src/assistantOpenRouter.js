@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
-/** Дешёвая модель на OpenRouter; переопределение: ASSISTANT_MODEL в server/.env */
-const DEFAULT_MODEL = 'meta-llama/llama-3.2-3b-instruct';
+/**
+ * Модель с поддержкой tools (function calling) на маршрутах OpenRouter.
+ * У llama-3.2-3b часто нет провайдера с tool use → «No endpoints found that support tool use».
+ * Переопределение: ASSISTANT_MODEL в server/.env.
+ */
+const DEFAULT_MODEL = 'openai/gpt-4o-mini';
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const MAX_TOOL_ROUNDS = 5;
 const MAX_CLIENT_MESSAGES = 40;
