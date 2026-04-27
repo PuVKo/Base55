@@ -677,6 +677,7 @@ export default function App({ currentUser = null }) {
               fields={fields}
               onFieldsChange={refreshFields}
               refreshBookings={refreshBookings}
+              refreshClientUi={refreshClientUi}
               bookingCount={bookings.length}
               patchFieldLocal={patchFieldLocal}
               createFieldLocal={createFieldLocal}

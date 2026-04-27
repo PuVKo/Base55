@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { isProduction } from './httpError.js';
+import { clientSafeError, shouldExposeErrorDetails } from './clientSafeError.js';
 
 /**
  * Роутер бесплатных моделей OpenRouter с фильтром по фичам запроса (в т.ч. tool calling).
@@ -305,12 +305,9 @@ async function executeTool(prisma, userId, writableKeys, redactedKeys, name, raw
       });
       return { ok: true, booking: sanitizeBookingForLlm(rowToApi(row), redactedKeys) };
     } catch (e) {
-      const code = e && typeof e === 'object' && 'code' in e ? e.code : '';
       console.error('[assistant] create_booking', e);
-      if (isProduction) {
-        return { ok: false, error: 'create_failed', code: String(code) };
-      }
-      return { ok: false, error: String(e?.message || e), code: String(code) };
+      const code = e && typeof e === 'object' && 'code' in e ? e.code : '';
+      return { ok: false, error: clientSafeError(e, 'Не удалось выполнить операцию с записями.'), code: String(code) };
     }
   }
 
@@ -378,15 +375,11 @@ function formatOpenRouterClientError(raw, httpStatus) {
     };
   }
   if (httpStatus === 429) {
-    return {
-      status: 429,
-      message: isProduction ? 'Слишком много запросов к сервису модели. Подождите немного и повторите.' : s,
-    };
+    if (shouldExposeErrorDetails()) return { status: 429, message: s };
+    return { status: 429, message: 'Слишком много запросов. Подождите немного и попробуйте снова.' };
   }
-  return {
-    status: 502,
-    message: isProduction ? 'Сервис модели временно недоступен. Попробуйте позже.' : s,
-  };
+  if (shouldExposeErrorDetails()) return { status: 502, message: s };
+  return { status: 502, message: 'Сервис модели вернул ошибку. Попробуйте позже.' };
 }
 
 /**
@@ -419,8 +412,9 @@ export async function handleAssistantChat(prisma, req, res) {
   const apiKey = (process.env.OPENROUTER_API_KEY ?? '').trim();
   if (!apiKey) {
     res.status(503).json({
-      error:
-        'Не задан OPENROUTER_API_KEY в server/.env (ключ: https://openrouter.ai/keys). Модель: ASSISTANT_MODEL.',
+      error: shouldExposeErrorDetails()
+        ? 'Не задан OPENROUTER_API_KEY в server/.env (ключ: https://openrouter.ai/keys). Модель: ASSISTANT_MODEL.'
+        : 'Сервис ассистента не настроен.',
     });
     return;
   }
@@ -505,10 +499,11 @@ export async function handleAssistantChat(prisma, req, res) {
       });
     } catch (err) {
       console.error('[assistant] fetch openrouter', err);
-      const msg = isProduction
-        ? 'Не удалось связаться с сервисом модели. Попробуйте позже.'
-        : `Сеть: не удалось связаться с OpenRouter (${String(err?.message || err)})`;
-      res.status(502).json({ error: msg });
+      res.status(502).json({
+        error: shouldExposeErrorDetails()
+          ? `Сеть: не удалось связаться с OpenRouter (${String(err?.message || err)})`
+          : 'Сеть: не удалось связаться с сервисом модели. Попробуйте позже.',
+      });
       return;
     }
 
@@ -527,6 +522,7 @@ export async function handleAssistantChat(prisma, req, res) {
         data?.error ||
         rawText.slice(0, 500) ||
         orRes.statusText;
+      console.error('[assistant] openrouter http', orRes.status, errMsg);
       const { status, message } = formatOpenRouterClientError(String(errMsg), orRes.status);
       res.status(status).json({ error: message });
       return;

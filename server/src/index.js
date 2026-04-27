@@ -19,8 +19,8 @@ import {
 import { mountAuthRoutes } from './authRoutes.js';
 import { ensureCsrfToken, requireCsrfUnlessExempt } from './csrf.js';
 import { isRusenderConfigured, isSmtpConfigured } from './mail.js';
-import { sendServerError } from './httpError.js';
 import { createSessionMiddleware, requireAuth } from './session.js';
+import { clientSafeError } from './clientSafeError.js';
 import { normalizeClientUi } from './userClientUi.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -317,8 +317,9 @@ app.post('/api/assistant/chat', assistantLimiter, requireAuth, async (req, res) 
   try {
     await handleAssistantChat(prisma, req, res);
   } catch (e) {
+    console.error(e);
     if (!res.headersSent) {
-      sendServerError(res, e);
+      res.status(500).json({ error: clientSafeError(e) });
     }
   }
 });
@@ -331,7 +332,8 @@ app.get('/api/fields', requireAuth, async (req, res) => {
     });
     res.json(rows);
   } catch (e) {
-    sendServerError(res, e);
+    console.error(e);
+    res.status(500).json({ error: clientSafeError(e) });
   }
 });
 
@@ -375,7 +377,8 @@ app.post('/api/fields', requireAuth, async (req, res) => {
     });
     res.json(row);
   } catch (e) {
-    sendServerError(res, e);
+    console.error(e);
+    res.status(500).json({ error: clientSafeError(e) });
   }
 });
 
@@ -424,7 +427,8 @@ app.patch('/api/fields/:id', requireAuth, async (req, res) => {
     const row = await prisma.fieldDefinition.update({ where: { id }, data });
     res.json(row);
   } catch (e) {
-    sendServerError(res, e);
+    console.error(e);
+    res.status(500).json({ error: clientSafeError(e) });
   }
 });
 
@@ -444,7 +448,8 @@ app.delete('/api/fields/:id', requireAuth, async (req, res) => {
     await prisma.fieldDefinition.delete({ where: { id } });
     res.json({ ok: true });
   } catch (e) {
-    sendServerError(res, e);
+    console.error(e);
+    res.status(500).json({ error: clientSafeError(e) });
   }
 });
 
@@ -477,7 +482,8 @@ app.put('/api/fields/reorder', requireAuth, async (req, res) => {
     });
     res.json(rows);
   } catch (e) {
-    sendServerError(res, e);
+    console.error(e);
+    res.status(500).json({ error: clientSafeError(e) });
   }
 });
 
@@ -493,7 +499,8 @@ app.get('/api/bookings', requireAuth, async (req, res) => {
     });
     res.json(list);
   } catch (e) {
-    sendServerError(res, e);
+    console.error(e);
+    res.status(500).json({ error: clientSafeError(e) });
   }
 });
 
@@ -508,7 +515,8 @@ app.get('/api/user/ui-prefs', requireAuth, async (req, res) => {
     const clientUi = normalizeClientUi(persisted ? raw : undefined);
     res.json({ clientUi, persisted });
   } catch (e) {
-    sendServerError(res, e);
+    console.error(e);
+    res.status(500).json({ error: clientSafeError(e) });
   }
 });
 
@@ -522,7 +530,8 @@ app.put('/api/user/ui-prefs', requireAuth, async (req, res) => {
     });
     res.json(clientUi);
   } catch (e) {
-    sendServerError(res, e);
+    console.error(e);
+    res.status(500).json({ error: clientSafeError(e) });
   }
 });
 
@@ -556,7 +565,8 @@ app.post('/api/bookings', requireAuth, async (req, res) => {
       res.status(409).json({ error: 'already exists' });
       return;
     }
-    sendServerError(res, e);
+    console.error(e);
+    res.status(500).json({ error: clientSafeError(e) });
   }
 });
 
@@ -585,7 +595,8 @@ app.put('/api/bookings/:id', requireAuth, async (req, res) => {
     const d = typeof row.data === 'object' && row.data !== null ? row.data : {};
     res.json({ ...d, id: row.id, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() });
   } catch (e) {
-    sendServerError(res, e);
+    console.error(e);
+    res.status(500).json({ error: clientSafeError(e) });
   }
 });
 
@@ -603,12 +614,13 @@ app.delete('/api/bookings/:id', requireAuth, async (req, res) => {
       res.status(404).json({ error: 'not found' });
       return;
     }
-    sendServerError(res, e);
+    console.error(e);
+    res.status(500).json({ error: clientSafeError(e) });
   }
 });
 
-/** Удаляет все заказы текущего пользователя (определения полей не меняет). */
-app.post('/api/bookings/clear', requireAuth, async (req, res) => {
+/** Удаляет все заказы только текущего пользователя (определения полей не трогает). */
+app.post('/api/user/bookings/clear', requireAuth, async (req, res) => {
   try {
     const body = typeof req.body === 'object' && req.body !== null ? req.body : {};
     if (body.confirm !== true) {
@@ -618,7 +630,184 @@ app.post('/api/bookings/clear', requireAuth, async (req, res) => {
     const r = await prisma.booking.deleteMany({ where: { userId: req.userId } });
     res.json({ ok: true, deleted: r.count });
   } catch (e) {
-    sendServerError(res, e);
+    console.error(e);
+    res.status(500).json({ error: clientSafeError(e) });
+  }
+});
+
+function ymdYear(ymd) {
+  const s = String(ymd ?? '').trim();
+  const m = s.match(/^(\d{4})-\d{2}-\d{2}$/);
+  return m ? Number(m[1]) : NaN;
+}
+
+/** Резервная копия: только данные текущего пользователя (поля, заказы, UI). */
+app.get('/api/user/data-export', requireAuth, async (req, res) => {
+  try {
+    const qYear = req.query?.year != null ? Number(req.query.year) : NaN;
+    const year = Number.isFinite(qYear) ? qYear : NaN;
+
+    const fields = await prisma.fieldDefinition.findMany({
+      where: { userId: req.userId },
+      orderBy: { sortOrder: 'asc' },
+    });
+    const bookingRows = await prisma.booking.findMany({
+      where: { userId: req.userId },
+      orderBy: { updatedAt: 'desc' },
+    });
+    const bookings = bookingRows
+      .map((r) => {
+        const d = typeof r.data === 'object' && r.data !== null ? r.data : {};
+        return { ...d, id: r.id, createdAt: r.createdAt.toISOString(), updatedAt: r.updatedAt.toISOString() };
+      })
+      .filter((b) => {
+        if (!Number.isFinite(year)) return true;
+        return ymdYear(b.date) === year;
+      });
+
+    const urow = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { uiPrefs: true },
+    });
+    const clientUi = normalizeClientUi(
+      urow?.uiPrefs != null && typeof urow.uiPrefs === 'object' ? urow.uiPrefs : undefined,
+    );
+
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="base56_dump${Number.isFinite(year) ? `_${year}` : ''}.json"`,
+    );
+    res.end(
+      JSON.stringify({
+        ok: true,
+        year: Number.isFinite(year) ? year : null,
+        fields,
+        bookings,
+        clientUi,
+      }),
+    );
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: clientSafeError(e) });
+  }
+});
+
+/** Восстановление из файла: только в пределах аккаунта текущего пользователя. */
+app.post('/api/user/data-import', requireAuth, async (req, res) => {
+  try {
+    const body = typeof req.body === 'object' && req.body !== null ? req.body : {};
+    const { fields, bookings, overwrite, clientUi: clientUiBody } = body;
+    if (!Array.isArray(fields) || !Array.isArray(bookings)) {
+      res.status(400).json({ error: 'fields and bookings arrays required' });
+      return;
+    }
+
+    const uid = req.userId;
+    const existing = await prisma.booking.count({ where: { userId: uid } });
+    if (existing > 0 && overwrite !== true) {
+      res.status(400).json({ error: 'database already has bookings (pass overwrite=true to replace)' });
+      return;
+    }
+
+    if (overwrite === true) {
+      await prisma.booking.deleteMany({ where: { userId: uid } });
+      await prisma.fieldDefinition.deleteMany({ where: { userId: uid } });
+    }
+
+    /** Все занятые PK — иначе два поля в дампе с одним id дают P2002 на `id`. */
+    const takenFieldIds = new Set(
+      (await prisma.fieldDefinition.findMany({ select: { id: true } })).map((r) => r.id),
+    );
+
+    // Fields: create in given order; keep ids if свободны (cuid из экспорта).
+    for (const f of fields) {
+      if (!f || typeof f !== 'object') continue;
+      const { id, key, label, type, sortOrder, system, visible, options, iconKey } = f;
+      if (!key || !label || !type) continue;
+      const k = String(key);
+      const wantId = id && typeof id === 'string' && id.trim() ? id.trim() : '';
+      const useCustomId = Boolean(wantId && !takenFieldIds.has(wantId));
+
+      const row = await prisma.fieldDefinition.upsert({
+        where: { userId_key: { userId: uid, key: k } },
+        update: {
+          label: String(label),
+          type: String(type),
+          sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
+          system: Boolean(system),
+          visible: visible !== undefined ? Boolean(visible) : true,
+          options: options ?? null,
+          iconKey: iconKey !== undefined ? (iconKey === null || iconKey === '' ? null : String(iconKey)) : undefined,
+        },
+        create: {
+          ...(useCustomId ? { id: wantId } : {}),
+          userId: uid,
+          key: k,
+          label: String(label),
+          type: String(type),
+          sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
+          system: Boolean(system),
+          visible: visible !== undefined ? Boolean(visible) : true,
+          options: options ?? null,
+          iconKey:
+            iconKey !== undefined && iconKey !== null && String(iconKey).trim()
+              ? String(iconKey).trim()
+              : null,
+        },
+      });
+      takenFieldIds.add(row.id);
+    }
+
+    // Bookings: как /api/bookings/migrate; если нет id — новый uuid (старые дампы / ручное редактирование).
+    // Если id занят у другого пользователя — импортируем с новым id (дамп не обязан быть "для того же userId").
+    let created = 0;
+    let bookingIdsGenerated = 0;
+    let bookingIdsReplacedDueToConflict = 0;
+    for (const b of bookings) {
+      if (!b || typeof b !== 'object') continue;
+      const { id: bodyId, createdAt, updatedAt, ...rest } = b;
+      const rawId = bodyId != null ? String(bodyId).trim() : '';
+      let id = rawId || randomUUID();
+      if (!rawId) bookingIdsGenerated += 1;
+      const meta = {};
+      if (createdAt) meta.createdAt = new Date(createdAt);
+      if (updatedAt) meta.updatedAt = new Date(updatedAt);
+      const exB = await prisma.booking.findUnique({ where: { id } });
+      if (exB && exB.userId !== uid) {
+        let guard = 0;
+        do {
+          id = randomUUID();
+          guard += 1;
+        } while (guard < 8 && (await prisma.booking.findUnique({ where: { id } })));
+        bookingIdsReplacedDueToConflict += 1;
+      }
+      await prisma.booking.upsert({
+        where: { id },
+        update: { data: rest, updatedAt: new Date() },
+        create: { id, userId: uid, data: rest, ...meta },
+      });
+      created += 1;
+    }
+
+    if (clientUiBody != null && typeof clientUiBody === 'object') {
+      await prisma.user.update({
+        where: { id: uid },
+        data: { uiPrefs: normalizeClientUi(clientUiBody) },
+      });
+    }
+
+    res.json({
+      ok: true,
+      fields: fields.length,
+      bookings: created,
+      bookingsInPayload: bookings.length,
+      bookingIdsGenerated,
+      bookingIdsReplacedDueToConflict,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: clientSafeError(e) });
   }
 });
 
@@ -659,7 +848,8 @@ app.post('/api/bookings/migrate', requireAuth, async (req, res) => {
     });
     res.json({ count: list.length, bookings: list });
   } catch (e) {
-    sendServerError(res, e);
+    console.error(e);
+    res.status(500).json({ error: clientSafeError(e) });
   }
 });
 
