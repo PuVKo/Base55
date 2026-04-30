@@ -65,18 +65,20 @@ export default function RegisterPage() {
           <p className="text-sm text-notion-muted mb-4">
             Мы отправили ссылку для подтверждения на <span className="text-white/90">{email}</span>.
           </p>
-          <button
-            type="button"
-            disabled={resending}
-            onClick={() => void resend()}
-            className="text-sm text-violet-300 hover:text-violet-200 mb-4 disabled:opacity-50 disabled:pointer-events-none"
-          >
-            {resending ? 'Отправка…' : 'Отправить письмо снова'}
-          </button>
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <button
+              type="button"
+              disabled={resending}
+              onClick={() => void resend()}
+              className="text-sm text-violet-300 hover:text-violet-200 disabled:opacity-50 disabled:pointer-events-none"
+            >
+              {resending ? 'Отправка…' : 'Отправить письмо снова'}
+            </button>
+            <Link to="/login" className="inline-block text-sm text-white/90 hover:text-white">
+              Ко входу
+            </Link>
+          </div>
           {resendMsg ? <p className="text-sm text-notion-muted mb-4">{resendMsg}</p> : null}
-          <Link to="/login" className="inline-block text-sm text-white/90 hover:text-white">
-            Ко входу
-          </Link>
         </div>
       </div>
     );
