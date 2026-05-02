@@ -99,6 +99,7 @@ export default function App({ currentUser = null }) {
   const [settingsTab, setSettingsTab] = useState(/** @type {'profile' | 'fields'} */ ('fields'));
   const [toast, setToast] = useState('');
   function setMainView(/** @type {string} */ view) {
+    if (view === activeView) return;
     runViewTransition(() => {
       setActiveView(view);
       if (view === 'settings') setSettingsTab('fields');
@@ -106,6 +107,7 @@ export default function App({ currentUser = null }) {
   }
 
   function openProfileSettings() {
+    if (activeView === 'settings' && settingsTab === 'profile') return;
     runViewTransition(() => {
       setActiveView('settings');
       setSettingsTab('profile');
@@ -113,6 +115,7 @@ export default function App({ currentUser = null }) {
   }
 
   function setSettingsTabWithTransition(/** @type {'profile' | 'fields'} */ tab) {
+    if (tab === settingsTab) return;
     runViewTransition(() => {
       setSettingsTab(tab);
     });
