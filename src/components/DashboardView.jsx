@@ -290,11 +290,11 @@ function SourceRevenueDonut({ sources, segments, totalSum }) {
   );
 }
 
-function KpiCard({ title, value, hint, primaryAccent }) {
+function KpiCard({ title, value, hint }) {
   return (
     <div className="kpi-card card">
       <div className="kpi-eyebrow">{title}</div>
-      <div className={`kpi-value ${primaryAccent ? 'accent' : ''}`}>{value}</div>
+      <div className="kpi-value">{value}</div>
       {hint ? <div className="kpi-sub">{hint}</div> : null}
     </div>
   );
@@ -352,9 +352,10 @@ export function DashboardView({ bookings, monthCursor, fields, onOpenBooking, da
       comparePrefix = 'к прошлому году';
     }
 
-    const processingInPeriod = reportList
+    /** Все проекты в обработке — без фильтра по периоду отчёта */
+    const processingBookings = bookings
       .filter((b) => b.status === 'processing')
-      .sort((a, b) => a.date.localeCompare(b.date));
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
     const sourceCounts = countBySource(reportList);
     const sourceSums = sumBySource(reportList);
@@ -444,7 +445,7 @@ export function DashboardView({ bookings, monthCursor, fields, onOpenBooking, da
       delta,
       showCompare,
       comparePrefix,
-      processingInPeriod,
+      processingBookings,
       sourceCounts,
       sourceSums,
       totalSourceRev,
@@ -483,8 +484,8 @@ export function DashboardView({ bookings, monthCursor, fields, onOpenBooking, da
         : 'Показаны все записи с датой съёмки. График ниже — по месяцам текущего календарного года.';
 
   return (
-    <div className="content">
-      <div className="content-narrow">
+    <div className="content dashboard-page">
+      <div className="content-narrow flex flex-col gap-[18px]">
       <div className="dash-hero card card-pad-lg">
         <div className="card-eyebrow">Отчёты</div>
         <h1 className={`dash-hero-title ${dashboardPeriod === 'month' ? 'capitalize' : ''}`}>{heroTitle}</h1>
@@ -512,7 +513,6 @@ export function DashboardView({ bookings, monthCursor, fields, onOpenBooking, da
               )
             ) : null
           }
-          primaryAccent
         />
         <KpiCard
           title="Всего записей"
@@ -532,23 +532,19 @@ export function DashboardView({ bookings, monthCursor, fields, onOpenBooking, da
           <div className="card-h">
             <div className="min-w-0">
               <h2 className="card-title">Проекты в обработке</h2>
-              <p className="card-sub">Только записи со статусом «Обрабатывается» за выбранный период</p>
+              <p className="card-sub">Все записи со статусом «Обрабатывается», независимо от месяца и периода отчёта</p>
             </div>
-            <div className="badge-count" title="Заказов в статусе «Обрабатывается» в выбранном периоде">
-              {stats.processingInPeriod.length}
+            <div className="badge-count tabular-nums" title="Заказов в статусе «Обрабатывается» всего">
+              {stats.processingBookings.length}
             </div>
           </div>
-          {stats.reportList.length === 0 ? (
+          {stats.processingBookings.length === 0 ? (
             <p className="text-sm text-notion-muted py-6 text-center rounded-xl bg-notion-bg/50 border border-dashed border-notion-border">
-              Нет записей за этот период
-            </p>
-          ) : stats.processingInPeriod.length === 0 ? (
-            <p className="text-sm text-notion-muted py-6 text-center rounded-xl bg-notion-bg/50 border border-dashed border-notion-border">
-              Нет записей в статусе «Обрабатывается» за этот период
+              Нет записей в статусе «Обрабатывается»
             </p>
           ) : (
             <ul className="proj-list max-h-[min(320px,50vh)] overflow-y-auto pr-0.5">
-              {stats.processingInPeriod.map((b) => (
+              {stats.processingBookings.map((b) => (
                 <li key={b.id}>
                   <button
                     type="button"
@@ -557,18 +553,16 @@ export function DashboardView({ bookings, monthCursor, fields, onOpenBooking, da
                   >
                     <div className="proj-row-main">
                       <div className="proj-title">{b.title || 'Без названия'}</div>
-                      <div className="proj-meta">
-                        <span className="proj-date tabular-nums">{formatDateRu(b.date)}</span>
-                        {b.timeRange ? (
-                          <>
-                            <span className="proj-dot">·</span>
-                            <span className="tabular-nums">{b.timeRange}</span>
-                          </>
-                        ) : null}
-                        <BookingStatusChip fields={fields} status={b.status} />
+                      <div className="proj-row-foot">
+                        <div className="proj-meta">
+                          <span className="proj-meta-line tabular-nums">
+                            <span className="proj-date">{formatDateRu(b.date)}</span>
+                          </span>
+                          <BookingStatusChip fields={fields} status={b.status} />
+                        </div>
+                        {b.amount ? <div className="proj-amount tabular-nums">{formatRub(b.amount)}</div> : null}
                       </div>
                     </div>
-                    {b.amount ? <div className="proj-amount tabular-nums">{formatRub(b.amount)}</div> : null}
                   </button>
                 </li>
               ))}
@@ -657,7 +651,7 @@ export function DashboardView({ bookings, monthCursor, fields, onOpenBooking, da
       <div className="card">
         <div className="flex items-center justify-between gap-2 mb-4">
           <div>
-            <h2 className="card-title">Ближайшие съёмки</h2>
+            <h2 className="card-title">Ближайшие записи</h2>
             <p className="card-sub">
               От сегодня до конца {format(new Date(), 'yyyy')} года · статусы «Записан» и «Переговоры»
             </p>
@@ -668,13 +662,13 @@ export function DashboardView({ bookings, monthCursor, fields, onOpenBooking, da
             Нет подходящих записей до конца года
           </p>
         ) : (
-          <ul className="max-h-[min(480px,60vh)] divide-y divide-[color:var(--border)] overflow-y-auto rounded-[var(--radius-lg)] border border-[color:var(--border)]">
+          <ul className="dash-upcoming-list max-h-[min(480px,60vh)] divide-y divide-[color:var(--border)] overflow-y-auto rounded-[var(--radius-lg)] border border-[color:var(--border)]">
             {stats.upcoming.map((b) => (
               <li key={b.id}>
                 <button
                   type="button"
                   onClick={() => onOpenBooking(b.id)}
-                  className="w-full flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3 text-left hover:bg-[var(--surface-hover)] transition-colors touch-manipulation group"
+                  className="dash-upcoming-row w-full flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3 text-left touch-manipulation group"
                 >
                   <div className="shrink-0 text-center min-w-[3rem] sm:min-w-[3.5rem]">
                     <div className="text-xs muted leading-tight">

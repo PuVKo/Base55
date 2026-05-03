@@ -129,6 +129,10 @@
     font-size: 10px;
   }
 
+  .cal-event-amount {
+    font-size: 12px;
+  }
+
   .tiles-grid {
     grid-template-columns: 1fr;
   }

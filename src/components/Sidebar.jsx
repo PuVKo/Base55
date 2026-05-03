@@ -39,7 +39,7 @@ export function Sidebar({
         <div className="brand-mark">B56</div>
         <div className="brand-text">
           <span className="brand-name">Base56</span>
-          <span className="brand-tag">Календарь для специалистов</span>
+          <span className="brand-tag">Умный календарь</span>
         </div>
       </div>
 

@@ -2,7 +2,6 @@
    DASHBOARD
    ============================================================ */
 .dash-hero {
-  margin-bottom: 18px;
   background: var(--bg-elev-1);
   position: relative;
   overflow: hidden;
@@ -35,7 +34,6 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
-  margin-bottom: 18px;
 }
 .kpi-card {
   padding: 18px 20px;
@@ -56,7 +54,6 @@
   margin-bottom: 6px;
   line-height: 1;
 }
-.kpi-value.accent { color: var(--accent); }
 .kpi-sub {
   font-size: 12px;
   color: var(--text-muted);
@@ -67,19 +64,31 @@
   display: grid;
   grid-template-columns: 1fr 1.1fr;
   gap: 12px;
-  margin-bottom: 18px;
 }
 
 .badge-count {
-  background: var(--bg-elev-3);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-weight: 600;
-  font-size: 12px;
-  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 2.125rem;
+  height: 28px;
+  padding: 0 11px;
   border-radius: var(--radius-pill);
-  min-width: 24px;
-  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: #111111;
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+html.dark .badge-count,
+[data-theme='dark'] .badge-count {
+  color: #ffffff;
+  background: transparent;
 }
 
 .proj-list { display: flex; flex-direction: column; gap: 6px; }
@@ -96,6 +105,38 @@
 }
 .proj-row:hover { border-color: var(--border-strong); background: var(--bg-elev-3); }
 .proj-row-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.proj-row-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.proj-row-foot .proj-meta {
+  flex: 1;
+  min-width: 0;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+/* Одна строка: дата/время урезаются, чип и сумма не переносятся — сумма не «прыгает» по вертикали */
+.proj-meta-line {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.proj-row-foot .proj-meta .chip {
+  flex-shrink: 0;
+  max-width: 100%;
+}
+.proj-row-foot .proj-amount {
+  flex-shrink: 0;
+  font-size: 13px;
+  line-height: 1;
+  padding-top: 1px;
+}
 .proj-title {
   font-size: 13px;
   font-weight: 500;
@@ -116,6 +157,40 @@
   font-weight: 600;
   color: var(--accent);
   white-space: nowrap;
+}
+
+/* Дашборд: ховер строк как у .cal-event — левая полоска 3px, фон и рамка как в календаре */
+.dashboard-page .proj-row {
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.dashboard-page .proj-row:hover {
+  background: var(--bg-elev-3);
+  border-color: var(--border-strong);
+  border-left: 3px solid var(--accent);
+  padding-left: 12px;
+  box-shadow: none;
+}
+
+.dashboard-page .dash-upcoming-list {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+/* Зарезервировать место под полоску 3px — без сдвига текста при ховере */
+.dashboard-page .dash-upcoming-row {
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-xs);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.dashboard-page .dash-upcoming-row:hover {
+  background: var(--bg-elev-3) !important;
+  border-left-color: var(--accent);
+}
+
+html.light .dashboard-page .proj-row:hover,
+html.light .dashboard-page .dash-upcoming-row:hover,
+[data-theme='light'] .dashboard-page .proj-row:hover,
+[data-theme='light'] .dashboard-page .dash-upcoming-row:hover {
+  border-left-color: var(--cal-event-left-stripe);
 }
 
 /* ----- Donut ----- */
@@ -449,6 +524,12 @@
 .cal-event:hover { background: var(--bg-elev-3); border-color: var(--border-strong); border-left-color: var(--accent); }
 .cal-event.status-progress { border-left-color: var(--status-progress); }
 .cal-event.status-pending { border-left-color: var(--status-pending); }
+/* status-* шли после :hover и перебивали полоску — при наведении всегда акцент */
+.cal-event.status-done:hover,
+.cal-event.status-progress:hover,
+.cal-event.status-pending:hover {
+  border-left-color: var(--accent);
+}
 
 /* Светлая тема: одна линия бренда — оранжевый чуть темнее акцента (без лавандового pending на белом фоне) */
 html.light .cal-event,
@@ -458,6 +539,11 @@ html.light .cal-event.status-pending {
   border-left-color: var(--cal-event-left-stripe);
 }
 html.light .cal-event:hover {
+  border-left-color: var(--accent);
+}
+html.light .cal-event.status-done:hover,
+html.light .cal-event.status-progress:hover,
+html.light .cal-event.status-pending:hover {
   border-left-color: var(--accent);
 }
 .cal-event-title {
@@ -477,7 +563,7 @@ html.light .cal-event:hover {
   color: color-mix(in srgb, var(--text) 55%, var(--text-muted) 45%);
 }
 .cal-event-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; }
-.cal-event-amount { font-size: 11px; font-weight: 600; color: var(--accent); margin-top: 2px; }
+.cal-event-amount { font-size: 14px; font-weight: 600; color: var(--accent); margin-top: 2px; font-variant-numeric: tabular-nums; }
 .cal-event-desc {
   font-size: 10px;
   line-height: 1.45;
@@ -506,10 +592,58 @@ html.light .cal-event:hover {
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  transition: all 0.15s ease;
   cursor: pointer;
+  transition:
+    border-color 0.22s cubic-bezier(0.25, 0.1, 0.25, 1),
+    box-shadow 0.24s cubic-bezier(0.25, 0.1, 0.25, 1),
+    transform 0.24s cubic-bezier(0.25, 0.1, 0.25, 1),
+    background-color 0.2s ease;
 }
-.tile:hover { border-color: var(--border-strong); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.tile:hover {
+  transform: translateY(-2px);
+  background: var(--surface-hover);
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+  box-shadow:
+    var(--shadow-md),
+    0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.tile:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+}
+.tile:active {
+  transform: translateY(-1px);
+  transition-duration: 0.12s;
+}
+
+html.light .tile:hover,
+[data-theme='light'] .tile:hover {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border-strong));
+  box-shadow:
+    0 10px 28px rgba(30, 22, 12, 0.07),
+    0 4px 12px rgba(30, 22, 12, 0.04),
+    0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+html.dark .tile:hover,
+[data-theme='dark'] .tile:hover {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border-strong));
+  box-shadow:
+    0 14px 42px rgba(0, 0, 0, 0.55),
+    0 6px 16px rgba(0, 0, 0, 0.35),
+    0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent),
+    0 0 36px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  }
+  .tile:hover,
+  .tile:active {
+    transform: none;
+  }
+}
 .tile-title {
   font-size: 13px;
   font-weight: 600;

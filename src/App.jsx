@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { addMonths, addYears, getYear, startOfMonth, startOfYear } from 'date-fns';
 import {
   AlertCircle,
@@ -102,11 +102,19 @@ export default function App({ currentUser = null }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSidebarCollapsed());
   const [settingsTab, setSettingsTab] = useState(/** @type {'profile' | 'fields'} */ ('fields'));
   const [toast, setToast] = useState('');
+  /** Именованный VT привязан к этому скроллу — снимок = видимая область; scrollTop сбрасываем внутри колбэка VT, не до него (иначе виден рывок). */
+  const mainScrollRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  function scrollMainToTop() {
+    const el = mainScrollRef.current;
+    if (el) el.scrollTop = 0;
+  }
+
   function setMainView(/** @type {string} */ view) {
     if (view === activeView) return;
     runViewTransition(() => {
       setActiveView(view);
       if (view === 'settings') setSettingsTab('fields');
+      scrollMainToTop();
     });
   }
 
@@ -115,6 +123,7 @@ export default function App({ currentUser = null }) {
     runViewTransition(() => {
       setActiveView('settings');
       setSettingsTab('profile');
+      scrollMainToTop();
     });
   }
 
@@ -122,6 +131,7 @@ export default function App({ currentUser = null }) {
     if (tab === settingsTab) return;
     runViewTransition(() => {
       setSettingsTab(tab);
+      scrollMainToTop();
     });
   }
 
@@ -608,8 +618,8 @@ export default function App({ currentUser = null }) {
             {toast}
           </div>
         ) : null}
-        <div className="flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable]">
-          <div className="view-transition-main min-h-full">
+        <div ref={mainScrollRef} className="view-transition-main flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable]">
+          <div className="min-h-full">
           {activeView === 'dashboard' ? (
             <DashboardView
               bookings={bookings}

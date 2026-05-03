@@ -138,7 +138,7 @@ function renderFieldBlock(field, booking, fields, tagsField, ctx) {
       const line = formatClientDisplay(raw);
       if (!line) return null;
       return (
-        <span className="inline-flex max-w-full min-w-0 items-center text-[12px] leading-snug text-amber-200/80">
+        <span className="inline-flex max-w-full min-w-0 items-center text-[12px] leading-snug text-amber-200/80 [html.light_&]:text-amber-950/90">
           Клиент: {line}
         </span>
       );
