@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { addMonths, addYears, startOfMonth, startOfYear } from 'date-fns';
+import { addMonths, addYears, getYear, startOfMonth, startOfYear } from 'date-fns';
 import {
   AlertCircle,
   LayoutTemplate,
@@ -10,7 +10,10 @@ import {
 import { AssistantView } from '@/components/AssistantView';
 import { BookingModal } from '@/components/BookingModal';
 import { CalendarView } from '@/components/CalendarView';
-import { DashboardPeriodTopRow } from '@/components/DashboardPeriodPanel';
+import {
+  DashboardMobileOverflowMenu,
+  DashboardPeriodTopRow,
+} from '@/components/DashboardPeriodPanel';
 import { DashboardView } from '@/components/DashboardView';
 import { GalleryView } from '@/components/GalleryView';
 import { MobileNav } from '@/components/MobileNav';
@@ -22,6 +25,7 @@ import { TableView } from '@/components/TableView';
 import { SettingsThemeToggle } from '@/components/ThemeToggle.jsx';
 import { useBookingsAndFields } from '@/hooks/useBookingsAndFields';
 import { filterByMonth } from '@/lib/bookingUtils';
+import { applyGalleryFilters, filterCalendarGridBookings } from '@/lib/galleryFilterPrefs';
 import { createEmptyBooking } from '@/lib/emptyBooking';
 import { formatRub } from '@/lib/format';
 import {
@@ -149,15 +153,57 @@ export default function App({ currentUser = null }) {
     }
   }, [sidebarCollapsed]);
 
-  const monthBookings = useMemo(
-    () => filterByMonth(bookings, monthCursor),
-    [bookings, monthCursor],
+  /** Записи для строки «Сумма» в шапке — те же правила, что и у плиток / таблицы / календаря. */
+  const summaryBookings = useMemo(() => {
+    if (activeView === 'gallery') {
+      return applyGalleryFilters(bookings, clientUi.galleryFilters, monthCursor);
+    }
+    if (activeView === 'table') {
+      return applyGalleryFilters(bookings, clientUi.tableFilters, monthCursor);
+    }
+    if (activeView === 'calendar') {
+      return filterCalendarGridBookings(bookings, clientUi.calendarFilters, monthCursor);
+    }
+    return filterByMonth(bookings, monthCursor);
+  }, [
+    activeView,
+    bookings,
+    monthCursor,
+    clientUi.galleryFilters,
+    clientUi.tableFilters,
+    clientUi.calendarFilters,
+  ]);
+
+  const summaryTotalRub = useMemo(
+    () => summaryBookings.reduce((acc, b) => acc + (Number(b.amount) || 0), 0),
+    [summaryBookings],
   );
 
-  const monthTotalRub = useMemo(
-    () => monthBookings.reduce((acc, b) => acc + (Number(b.amount) || 0), 0),
-    [monthBookings],
-  );
+  const summaryChipTitle = useMemo(() => {
+    const intro =
+      'Сумма значений поля «Сумма» по записям с учётом фильтров этой страницы.';
+    if (activeView === 'gallery') {
+      const p = clientUi.galleryFilters.period;
+      if (p === 'year') return `${intro} Период: календарный год ${getYear(monthCursor)}.`;
+      if (p === 'all') return `${intro} Период: все записи.`;
+      return `${intro} Период: выбранный месяц (включая записи без даты в этом месяце).`;
+    }
+    if (activeView === 'table') {
+      const p = clientUi.tableFilters.period;
+      if (p === 'year') return `${intro} Период: календарный год ${getYear(monthCursor)}.`;
+      if (p === 'all') return `${intro} Период: все записи.`;
+      return `${intro} Период: выбранный месяц (включая записи без даты в этом месяце).`;
+    }
+    if (activeView === 'calendar') {
+      return `${intro} Учитываются записи в видимой сетке месяца и фильтры статуса / тегов / поиска.`;
+    }
+    return intro;
+  }, [
+    activeView,
+    monthCursor,
+    clientUi.galleryFilters.period,
+    clientUi.tableFilters.period,
+  ]);
 
   function openNew(dateIso) {
     const draft = createEmptyBooking(dateIso, fields);
@@ -306,14 +352,35 @@ export default function App({ currentUser = null }) {
                   <h1 className="page-title">Ассистент</h1>
                 </>
               ) : activeView === 'dashboard' ? (
-                <DashboardPeriodTopRow
-                  dashboardPeriod={dashboardPeriod}
-                  monthCursor={monthCursor}
-                  setMonthCursor={setMonthCursor}
-                  onChangePeriod={(next) =>
-                    updateClientUi((prev) => ({ ...prev, dashboardPeriod: next }))
-                  }
-                />
+                <div className="flex w-full min-w-0 items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <DashboardPeriodTopRow
+                      dashboardPeriod={dashboardPeriod}
+                      monthCursor={monthCursor}
+                      setMonthCursor={setMonthCursor}
+                      onChangePeriod={(next) =>
+                        updateClientUi((prev) => ({ ...prev, dashboardPeriod: next }))
+                      }
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openNew()}
+                    className="btn btn-primary inline-flex h-9 max-h-9 min-h-9 shrink-0 touch-manipulation items-center gap-1.5 px-2.5 text-sm leading-none md:hidden"
+                  >
+                    <Plus className="h-4 w-4 shrink-0" aria-hidden />
+                    <span className="max-w-[9.5rem] truncate sm:max-w-none">Новая запись</span>
+                  </button>
+                  <DashboardMobileOverflowMenu
+                    dashboardPeriod={dashboardPeriod}
+                    onChangePeriod={(next) =>
+                      updateClientUi((prev) => ({ ...prev, dashboardPeriod: next }))
+                    }
+                    setMonthCursor={setMonthCursor}
+                    clientUi={clientUi}
+                    updateClientUi={updateClientUi}
+                  />
+                </div>
               ) : activeView === 'gallery' && galleryPeriodMode === 'all' ? (
                 <>
                   <span className="crumb-label">Записи</span>
@@ -348,7 +415,11 @@ export default function App({ currentUser = null }) {
               )}
               </div>
             </div>
-            <div className="flex shrink-0 items-center md:hidden min-w-[5.5rem]">
+            <div
+              className={`flex shrink-0 items-center md:hidden min-w-[5.5rem] ${
+                activeView === 'dashboard' ? 'hidden' : ''
+              }`}
+            >
               <SettingsThemeToggle
                 clientUi={clientUi}
                 updateClientUi={updateClientUi}
@@ -357,7 +428,11 @@ export default function App({ currentUser = null }) {
             </div>
           </div>
           {showMonthChrome ? (
-            <div className="topbar-right flex-wrap justify-end md:flex-nowrap md:overflow-x-auto md:overflow-y-visible overscroll-x-contain [scrollbar-width:thin]">
+            <div
+              className={`topbar-right flex-wrap justify-end md:flex-nowrap md:overflow-x-auto md:overflow-y-visible overscroll-x-contain [scrollbar-width:thin] ${
+                activeView === 'dashboard' ? 'hidden md:flex' : ''
+              }`}
+            >
               <div
                 className={
                   activeView === 'calendar' || activeView === 'gallery' || activeView === 'table'
@@ -501,24 +576,25 @@ export default function App({ currentUser = null }) {
               ) : null}
               {activeView !== 'dashboard' ? (
                 <div
-                  className="flex h-10 min-h-10 max-h-10 w-full min-w-0 flex-nowrap items-center justify-center gap-x-1.5 whitespace-nowrap rounded-full border border-[color:var(--accent-soft-strong)] bg-[var(--accent-soft)] px-2 sm:inline-flex sm:w-auto sm:shrink-0 sm:justify-start sm:gap-x-2 sm:px-3"
-                  title="Сумма полей «Сумма» по всем записям выбранного месяца"
+                  className="flex w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-full border border-[color:var(--accent-soft-strong)] bg-[var(--accent-soft)] px-2 py-1.5 sm:inline-flex sm:h-10 sm:min-h-10 sm:max-h-10 sm:flex-row sm:flex-nowrap sm:items-center sm:justify-center sm:gap-x-2 sm:whitespace-nowrap sm:px-3 sm:py-0 sm:w-auto sm:shrink-0"
+                  title={summaryChipTitle}
                 >
-                  <span className="text-[9px] font-medium uppercase tracking-wide leading-none text-[color:var(--accent)]">
-                    Итого за месяц
-                  </span>
                   <span className="text-base font-semibold tabular-nums leading-none tracking-tight text-[color:var(--accent)]">
-                    {formatRub(monthTotalRub)}
+                    {formatRub(summaryTotalRub)}
                   </span>
-                  <span className="text-[10px] tabular-nums leading-none text-[color:var(--accent)]/75">
-                    {monthBookings.length} {pluralRecordsRu(monthBookings.length)}
+                  <span className="text-[10px] tabular-nums leading-none text-[color:var(--accent)]/75 sm:inline">
+                    {summaryBookings.length} {pluralRecordsRu(summaryBookings.length)}
                   </span>
                 </div>
               ) : null}
               <button
                 type="button"
                 onClick={() => openNew()}
-                className="btn btn-primary h-10 min-h-10 max-h-10 w-full touch-manipulation sm:w-auto shrink-0 leading-none"
+                className={`btn btn-primary h-10 min-h-10 max-h-10 touch-manipulation shrink-0 leading-none ${
+                  activeView === 'dashboard'
+                    ? 'hidden w-auto md:inline-flex'
+                    : 'w-full sm:w-auto'
+                }`}
               >
                 <Plus className="shrink-0" aria-hidden />
                 Новая запись

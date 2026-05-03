@@ -22,7 +22,7 @@ import { FloatingSidePanel } from '@/components/FloatingSidePanel';
 import { TileFieldsPanel } from '@/components/TileFieldsPanel';
 import { ViewFiltersPanel } from '@/components/ViewFiltersPanel';
 import { useCoarsePointer, useIsMobile } from '@/hooks/use-mobile';
-import { applyGalleryFilters, isViewFiltersActive } from '@/lib/galleryFilterPrefs';
+import { filterCalendarGridBookings, isViewFiltersActive } from '@/lib/galleryFilterPrefs';
 import { defaultGalleryFilters } from '@/lib/galleryPrefsModel';
 import { formatRub } from '@/lib/format';
 
@@ -66,18 +66,10 @@ export function CalendarView({
     }));
   }
 
-  const filteredBookings = useMemo(() => {
-    // В сетке месяца показываем дни из соседних месяцев (padding),
-    // поэтому фильтр по периоду делаем по интервалу сетки, а не строго по monthCursor.
-    const base = applyGalleryFilters(bookings, prefs, monthCursor, { skipPeriod: true });
-    const start = format(startOfWeek(startOfMonth(monthCursor), { weekStartsOn: 1 }), 'yyyy-MM-dd');
-    const end = format(endOfWeek(endOfMonth(monthCursor), { weekStartsOn: 1 }), 'yyyy-MM-dd');
-    return base.filter((b) => {
-      const d = typeof b.date === 'string' ? b.date : '';
-      if (!d) return false;
-      return d >= start && d <= end;
-    });
-  }, [bookings, prefs, monthCursor]);
+  const filteredBookings = useMemo(
+    () => filterCalendarGridBookings(bookings, prefs, monthCursor),
+    [bookings, prefs, monthCursor],
+  );
 
   const hasFilters = isViewFiltersActive(prefs, { includePeriod: false });
 

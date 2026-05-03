@@ -9,7 +9,7 @@ import { MAIN_VIEWS } from '@/navConfig';
 export function MobileNav({ activeView, onViewChange }) {
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-stretch justify-center gap-0 border-t border-[color:var(--border)] bg-[var(--bg-elev-1)]/95 backdrop-blur-md pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-4px_24px_rgba(0,0,0,0.2)] pl-[max(0.25rem,env(safe-area-inset-left))] pr-[max(0.25rem,env(safe-area-inset-right))]"
+      className="view-transition-mobile-nav md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-stretch justify-center gap-0 border-t border-[color:var(--border)] bg-[var(--bg-elev-1)] pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-4px_24px_rgba(0,0,0,0.2)] pl-[max(0.25rem,env(safe-area-inset-left))] pr-[max(0.25rem,env(safe-area-inset-right))]"
       aria-label="Основная навигация"
     >
       <div className="flex min-w-0 w-full max-w-full flex-1 items-stretch justify-around gap-0.5 px-0.5">

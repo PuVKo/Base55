@@ -8,14 +8,14 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import dotenv from 'dotenv';
 import pg from 'pg';
+import { loadServerEnv } from '../src/loadEnv.js';
 import { pgConnectionOptions } from '../src/pgSslConfig.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const serverRoot = path.join(__dirname, '..');
 const migrationsDir = path.join(serverRoot, 'prisma', 'postgres', 'migrations');
-dotenv.config({ path: path.join(serverRoot, '.env') });
+loadServerEnv();
 
 function loadDatabaseUrl() {
   const fromEnv = process.env.DATABASE_URL?.trim();

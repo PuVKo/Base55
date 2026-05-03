@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Trash2, X } from 'lucide-react';
+import { CalendarClock, Trash2, X } from 'lucide-react';
 import { BookingDateInput } from '@/components/BookingDateInput';
 import { ClientFieldInputs } from '@/components/ClientFieldInputs';
 import { normalizeClientFieldValue } from '@/lib/clientField';
@@ -14,13 +14,13 @@ function clone(b) {
 }
 
 const inputCls =
-  'w-full rounded-md border-0 border-b border-transparent bg-transparent px-0 py-1 text-sm text-notion-fg placeholder:text-notion-muted/50 focus:outline-none focus:border-brand/60 focus:ring-0';
+  'w-full rounded-md border-0 border-b border-transparent bg-transparent px-0 py-1 text-sm text-notion-fg placeholder:text-notion-muted/50 focus:outline-none focus:border-[color:var(--accent)] focus:ring-0';
 
 const inputBordered =
-  'w-full rounded-lg border border-notion-border bg-notion-bg px-3 py-2 text-sm text-notion-fg placeholder:text-notion-muted focus:outline-none focus:ring-2 focus:ring-brand/45';
+  'w-full rounded-lg border border-notion-border bg-notion-bg px-3 py-2 text-sm text-notion-fg placeholder:text-notion-muted shadow-[0_1px_0_rgba(0,0,0,0.03)] dark:shadow-none focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]/35 focus:border-[color:var(--accent)]/45';
 
 const moneyInputShell =
-  'w-full rounded-lg border border-notion-border bg-notion-bg px-3 py-2 text-sm flex items-center gap-2 focus-within:outline-none focus-within:ring-2 focus-within:ring-brand/45';
+  'w-full rounded-lg border border-notion-border bg-notion-bg px-3 py-2 text-sm flex items-center gap-2 shadow-[0_1px_0_rgba(0,0,0,0.03)] dark:shadow-none focus-within:outline-none focus-within:ring-2 focus-within:ring-[color:var(--accent)]/35 focus-within:border-[color:var(--accent)]/45';
 
 const moneyInputInner =
   'flex-1 min-w-0 min-h-[1.25rem] bg-transparent border-0 p-0 text-notion-fg tabular-nums placeholder:text-notion-muted focus:outline-none focus:ring-0';
@@ -100,12 +100,16 @@ function MoneyIntInput({ value, onChange }) {
  */
 function PropertyRow({ Icon, label, children }) {
   return (
-    <div className="flex items-start gap-2 py-2 px-1 -mx-1 rounded-md hover:bg-notion-hover transition-colors">
-      <Icon className="w-4 h-4 shrink-0 mt-1 text-notion-muted/75" strokeWidth={1.75} aria-hidden />
-      <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-3 flex-1 min-w-0">
-        <span className="text-sm text-notion-muted shrink-0 sm:w-36 sm:pt-1">{label}</span>
-        <div className="flex-1 min-w-0">{children}</div>
+    <div className="group flex flex-col gap-2 py-2.5 px-2 -mx-1 sm:-mx-1.5 rounded-xl border-l-2 border-l-transparent transition-[border-color] duration-150 ease-out hover:border-l-[color:var(--accent)] motion-reduce:transition-none sm:flex-row sm:items-start sm:gap-3">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 sm:min-h-[2.125rem] sm:w-36 sm:flex-none sm:shrink-0">
+        <span className="inline-flex size-5 shrink-0 items-center justify-center text-notion-muted transition-colors duration-150 ease-out group-hover:text-[color:var(--accent)] motion-reduce:transition-none [&_svg]:block">
+          <Icon className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />
+        </span>
+        <span className="min-w-0 text-sm font-normal leading-none text-notion-muted transition-colors duration-150 ease-out group-hover:text-[color:var(--accent)] motion-reduce:transition-none">
+          {label}
+        </span>
       </div>
+      <div className="min-w-0 w-full flex-1 sm:min-w-0">{children}</div>
     </div>
   );
 }
@@ -315,7 +319,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
               type="checkbox"
               checked={Boolean(draft[key])}
               onChange={(e) => patch(key, e.target.checked)}
-              className="rounded border-notion-border bg-notion-bg text-brand focus:ring-brand/45"
+              className="rounded border-notion-border bg-notion-bg text-[color:var(--accent)] focus:ring-2 focus:ring-[color:var(--accent)]/45 focus:ring-offset-0 focus:ring-offset-transparent"
             />
             <span className="text-sm text-notion-muted">Да</span>
           </label>
@@ -324,7 +328,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
         const items = getFieldOptionItems(f);
         const cur = typeof draft[key] === 'string' ? draft[key] : '';
         return (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 sm:min-h-[2.125rem]">
             {items.map((opt) => (
               <button
                 key={opt.id}
@@ -347,7 +351,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
         const raw = draft[key];
         const selected = new Set(Array.isArray(raw) ? raw.filter((x) => typeof x === 'string') : []);
         return (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 sm:min-h-[2.125rem]">
             {items.map((opt) => (
               <button
                 key={opt.id}
@@ -369,7 +373,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
         const items = getFieldOptionItems(f);
         const cur = typeof draft[f.key] === 'string' ? draft[f.key] : '';
         return (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 sm:min-h-[2.125rem]">
             {items.map((opt) => (
               <button
                 key={opt.id}
@@ -393,7 +397,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
           ? draft[f.key].filter((x) => typeof x === 'string')
           : [];
         return (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 sm:min-h-[2.125rem]">
             {items.map((opt) => (
               <button
                 key={opt.id}
@@ -415,7 +419,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
         const items = getFieldOptionItems(f);
         const cur = typeof draft[f.key] === 'string' ? draft[f.key] : '';
         return (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 sm:min-h-[2.125rem]">
             {items.map((opt) => (
               <button
                 key={opt.id}
@@ -436,32 +440,34 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
       case 'comments': {
         const list = Array.isArray(draft[f.key]) ? draft[f.key] : [];
         return (
-          <div className="space-y-3">
-            <ul className="space-y-2 max-h-40 overflow-y-auto">
-              {list.map((c) => (
-                <li
-                  key={c.id}
-                  className="flex gap-2 items-start text-sm text-notion-fg/90 bg-notion-bg rounded-lg px-3 py-2 border border-notion-border/60"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="whitespace-pre-wrap break-words">{c.text}</div>
-                    <div className="text-[10px] text-notion-muted mt-1">
-                      {new Date(c.createdAt).toLocaleString('ru-RU')}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeComment(f.key, c.id)}
-                    className="shrink-0 p-1.5 rounded-md text-notion-muted hover:bg-rose-950/50 hover:text-rose-300 transition-colors touch-manipulation"
-                    title="Удалить комментарий"
-                    aria-label="Удалить комментарий"
+          <div className={list.length > 0 ? 'space-y-3' : ''}>
+            {list.length > 0 ? (
+              <ul className="space-y-2 max-h-40 overflow-y-auto">
+                {list.map((c) => (
+                  <li
+                    key={c.id}
+                    className="flex gap-2 items-start text-sm text-notion-fg/90 bg-notion-bg rounded-lg px-3 py-2 border border-notion-border/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] dark:border-notion-border/60"
                   >
-                    <Trash2 className="w-4 h-4" strokeWidth={1.75} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="whitespace-pre-wrap break-words">{c.text}</div>
+                      <div className="text-[10px] text-notion-muted mt-1">
+                        {new Date(c.createdAt).toLocaleString('ru-RU')}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeComment(f.key, c.id)}
+                      className="shrink-0 p-1.5 rounded-md text-notion-muted hover:bg-red-500/10 hover:text-red-600 dark:hover:bg-rose-950/50 dark:hover:text-rose-300 transition-colors touch-manipulation"
+                      title="Удалить комментарий"
+                      aria-label="Удалить комментарий"
+                    >
+                      <Trash2 className="w-4 h-4" strokeWidth={1.75} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <div className="flex flex-col gap-2 sm:min-h-[2.125rem] sm:flex-row sm:items-center sm:gap-2">
               <input
                 type="text"
                 value={commentDraftByKey[f.key] ?? ''}
@@ -482,7 +488,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
               <button
                 type="button"
                 onClick={() => addComment(f.key)}
-                className="px-3 py-2 rounded-lg border border-notion-border text-sm text-notion-muted hover:bg-notion-hover hover:text-notion-fg transition-colors shrink-0"
+                className="px-3 py-2 rounded-lg border border-[color:var(--accent-soft-strong)] bg-[var(--accent-soft)] text-sm font-semibold text-[color:var(--accent)] hover:bg-[color:rgba(255,156,77,0.22)] hover:border-[color:var(--accent)]/35 transition-colors shrink-0 dark:bg-[color:rgba(255,122,26,0.14)] dark:hover:bg-[color:rgba(255,156,77,0.2)]"
               >
                 Добавить
               </button>
@@ -507,26 +513,42 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
     );
   }
 
+  const titlePreview =
+    typeof draft.title === 'string' && draft.title.trim() ? draft.title.trim() : 'Без названия';
+
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col sm:items-center sm:justify-center sm:p-4 bg-black/65 backdrop-blur-sm pt-[env(safe-area-inset-top)] sm:pt-4"
+      className="fixed inset-0 z-50 flex flex-col sm:items-center sm:justify-center sm:p-4 pt-[env(safe-area-inset-top)] sm:pt-4 bg-black/55 backdrop-blur-sm dark:bg-black/65"
       role="dialog"
       aria-modal="true"
       aria-labelledby="booking-modal-title"
       onClick={(e) => e.target === e.currentTarget && void handleDismiss()}
     >
       <div
-        className="flex flex-col w-full max-w-4xl flex-1 min-h-0 sm:flex-none sm:h-auto sm:max-h-[min(90dvh,920px)] h-full overflow-hidden rounded-none sm:rounded-xl border-0 sm:border border-notion-border bg-notion-surface shadow-2xl pb-[env(safe-area-inset-bottom)]"
+        className="flex flex-col w-full max-w-4xl flex-1 min-h-0 sm:flex-none sm:h-auto sm:max-h-[min(90dvh,920px)] h-full overflow-hidden rounded-none sm:rounded-2xl border-0 sm:border border-notion-border bg-notion-surface shadow-2xl pb-[env(safe-area-inset-bottom)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-end gap-2 p-3 sm:p-4 border-b border-notion-border shrink-0 bg-notion-surface z-10">
-          <span id="booking-modal-title" className="sr-only">
-            {typeof draft.title === 'string' && draft.title.trim() ? draft.title : 'Запись'}
-          </span>
+        <div className="flex items-center gap-3 p-3 sm:p-4 border-b border-notion-border shrink-0 z-10 bg-notion-surface">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[color:var(--accent)] ring-1 ring-[color:var(--accent-soft-strong)] shadow-sm"
+            aria-hidden
+          >
+            <CalendarClock className="h-5 w-5" strokeWidth={1.75} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--accent)]">
+              Редактирование записи
+            </p>
+            {!titleField ? (
+              <h2 id="booking-modal-title" className="text-sm sm:text-base font-semibold text-notion-fg truncate mt-0.5">
+                {titlePreview}
+              </h2>
+            ) : null}
+          </div>
           <button
             type="button"
             onClick={() => void handleDismiss()}
-            className="p-2 rounded-md text-notion-muted hover:bg-notion-hover hover:text-notion-fg shrink-0 touch-manipulation"
+            className="inline-flex items-center justify-center rounded-xl border border-notion-border p-2 text-notion-muted hover:bg-notion-hover hover:text-notion-fg hover:border-[color:var(--accent)]/40 shrink-0 touch-manipulation transition-colors"
             aria-label="Закрыть"
           >
             <X className="w-5 h-5" />
@@ -535,22 +557,26 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
 
         <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5 space-y-1 overscroll-contain">
           {titleField ? (
-            <div className="pb-4 mb-2 border-b border-notion-border/60">
+            <div className="pb-4 mb-3 rounded-xl border border-notion-border/80 bg-notion-bg/60 dark:bg-notion-bg/35 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] dark:shadow-none">
               <input
+                id="booking-modal-title"
                 type="text"
                 value={typeof draft.title === 'string' ? draft.title : ''}
                 onChange={(e) => patch('title', e.target.value)}
-                className="w-full text-xl sm:text-2xl font-semibold bg-transparent border-0 outline-none focus:ring-0 text-notion-fg placeholder:text-notion-muted/45 px-0"
+                className="w-full text-xl sm:text-2xl font-semibold bg-transparent border-0 outline-none focus:ring-0 text-notion-fg placeholder:text-notion-muted/45 px-0 selection:bg-[var(--accent-soft)]"
                 placeholder="Название"
+                aria-label="Название записи"
               />
             </div>
           ) : null}
 
-          {listFields.map((f) => (
-            <div key={f.id}>{wrapField(f)}</div>
-          ))}
+          <div className="rounded-xl border border-notion-border/70 bg-notion-bg/40 dark:bg-notion-bg/25 px-2.5 py-1.5 sm:px-4 sm:py-2 space-y-0">
+            {listFields.map((f) => (
+              <div key={f.id}>{wrapField(f)}</div>
+            ))}
+          </div>
 
-          <div className="flex flex-col-reverse sm:flex-row sm:flex-wrap gap-2 pt-6 mt-4 border-t border-notion-border">
+          <div className="flex flex-col-reverse sm:flex-row sm:flex-wrap gap-2 pt-5 mt-2 border-t border-notion-border/90">
             {canDelete ? (
               <button
                 type="button"
@@ -563,7 +589,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
                     /* toast в App */
                   }
                 }}
-                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-lg text-sm text-red-300 hover:bg-red-950/40 sm:ml-auto transition-colors touch-manipulation"
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl text-sm font-medium text-red-600 hover:bg-red-500/10 sm:ml-auto transition-colors touch-manipulation dark:text-red-300 dark:hover:bg-red-950/45"
               >
                 Удалить
               </button>

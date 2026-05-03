@@ -1,7 +1,13 @@
-import { Calendar, LayoutDashboard, LayoutGrid, MessageSquare, Settings, Table2 } from 'lucide-react';
+import { Calendar, ChartColumn, LayoutGrid, MessageSquare, Settings, Table2 } from 'lucide-react';
 
 export const MAIN_VIEWS = [
-  { id: 'dashboard', label: 'Дашборд', shortLabel: 'Итоги', icon: LayoutDashboard },
+  {
+    id: 'dashboard',
+    label: 'Дашборд',
+    shortLabel: 'Итоги',
+    sidebarLabel: 'Статистика',
+    icon: ChartColumn,
+  },
   { id: 'calendar', label: 'Календарь', shortLabel: 'Календ.', icon: Calendar },
   { id: 'gallery', label: 'Плитки', shortLabel: 'Плитки', icon: LayoutGrid },
   { id: 'table', label: 'Таблица', shortLabel: 'Табл.', icon: Table2 },

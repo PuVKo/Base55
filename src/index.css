@@ -80,6 +80,26 @@ html.light input[type='time']::-webkit-calendar-picker-indicator {
   .view-transition-settings-panel {
     view-transition-name: settings-panel;
   }
+
+  ::view-transition-group(main-content) {
+    z-index: 1;
+  }
+
+  /* Только mobile: именованная группа таб-бара выше main-content (Chromium VT слои) */
+  @media (max-width: 767.98px) {
+    .view-transition-mobile-nav {
+      view-transition-name: mobile-nav;
+    }
+
+    ::view-transition-group(mobile-nav) {
+      z-index: 2;
+    }
+
+    ::view-transition-old(mobile-nav),
+    ::view-transition-new(mobile-nav) {
+      animation: none !important;
+    }
+  }
 }
 
 @keyframes vt-main-out {

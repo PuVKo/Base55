@@ -1,4 +1,4 @@
-import { getYear } from 'date-fns';
+import { endOfMonth, endOfWeek, format, getYear, startOfMonth, startOfWeek } from 'date-fns';
 
 import { filterByCalendarYear, filterByMonthOrUndated } from '@/lib/bookingUtils';
 import { defaultGalleryFilters, normalizeClientUi, normalizeGalleryFilters } from '@/lib/galleryPrefsModel';
@@ -163,4 +163,22 @@ export function applyGalleryFilters(bookings, prefs, monthCursor, options = {}) 
   }
 
   return applyNonPeriodFilters(list, prefs);
+}
+
+/**
+ * Записи для сетки месяца в календаре (включая «пустышки» соседних недель) + фильтры без периода.
+ * Совпадает с подсчётом карточек в календарной сетке.
+ * @param {any[]} bookings
+ * @param {import('./galleryPrefsModel').GalleryFilterPrefs} prefs
+ * @param {Date} monthCursor
+ */
+export function filterCalendarGridBookings(bookings, prefs, monthCursor) {
+  const base = applyGalleryFilters(bookings, prefs, monthCursor, { skipPeriod: true });
+  const start = format(startOfWeek(startOfMonth(monthCursor), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  const end = format(endOfWeek(endOfMonth(monthCursor), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  return base.filter((b) => {
+    const d = typeof b.date === 'string' ? b.date : '';
+    if (!d) return false;
+    return d >= start && d <= end;
+  });
 }

@@ -1,9 +1,6 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
+import { loadServerEnv } from './loadEnv.js';
 
-const serverRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-dotenv.config({ path: path.join(serverRoot, '.env') });
+loadServerEnv();
 
 /**
  * Timeweb Cloud Postgres часто на *.twc1.net. Если в образ/окружение попал локальный server/.env с

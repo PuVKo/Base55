@@ -6,11 +6,11 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'path';
 import { fileURLToPath } from 'node:url';
-import dotenv from 'dotenv';
+import { loadServerEnv } from '../src/loadEnv.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const serverRoot = path.join(__dirname, '..');
-dotenv.config({ path: path.join(serverRoot, '.env') });
+loadServerEnv();
 
 // Invoke Prisma via Node (not `.cmd`) so paths with spaces work on Windows.
 const prismaCli = path.join(serverRoot, 'node_modules', 'prisma', 'build', 'index.js');

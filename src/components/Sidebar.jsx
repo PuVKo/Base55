@@ -57,7 +57,7 @@ export function Sidebar({
       </button>
 
       <nav className="nav">
-        {MAIN_VIEWS.map(({ id, label, icon: Icon }) => (
+        {MAIN_VIEWS.map(({ id, label, sidebarLabel, icon: Icon }) => (
           <button
             key={id}
             type="button"
@@ -65,7 +65,7 @@ export function Sidebar({
             onClick={() => onViewChange(id)}
           >
             <Icon size={16} strokeWidth={1.75} />
-            <span className="nav-label">{label}</span>
+            <span className="nav-label">{sidebarLabel ?? label}</span>
           </button>
         ))}
       </nav>
