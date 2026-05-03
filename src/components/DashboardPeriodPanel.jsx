@@ -6,6 +6,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { MonthNav } from '@/components/MonthNav';
 import { SettingsThemeToggle } from '@/components/ThemeToggle.jsx';
 import { YearNav } from '@/components/YearNav';
+import { runViewTransition } from '@/viewTransition.js';
 
 const PERIOD_OPTIONS = [
   ['month', 'Месяц'],
@@ -18,11 +19,13 @@ const PERIOD_OPTIONS = [
  * @param {'month' | 'year' | 'all'} dashboardPeriod
  */
 export function selectDashboardPeriod(pid, dashboardPeriod, onChangePeriod, setMonthCursor) {
-  onChangePeriod(pid);
-  if (pid === 'year') setMonthCursor((c) => startOfMonth(startOfYear(c)));
-  if (pid === 'month' && dashboardPeriod !== 'month') {
-    setMonthCursor(startOfMonth(new Date()));
-  }
+  runViewTransition(() => {
+    onChangePeriod(pid);
+    if (pid === 'year') setMonthCursor((c) => startOfMonth(startOfYear(c)));
+    if (pid === 'month' && dashboardPeriod !== 'month') {
+      setMonthCursor(startOfMonth(new Date()));
+    }
+  });
 }
 
 /**

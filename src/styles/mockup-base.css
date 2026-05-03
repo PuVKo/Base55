@@ -58,6 +58,8 @@ html.dark {
   --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.5);
   --grid-line: rgba(255, 255, 255, 0.045);
+  /* Фон шапки и скролла main: мягче чистого чёрного; .card по-прежнему на --bg-elev-1 */
+  --main-shell-bg: #101014;
   color-scheme: dark;
 }
 
@@ -356,6 +358,11 @@ input, textarea { font-family: inherit; }
   box-sizing: border-box;
 }
 
+[data-theme='dark'] .topbar,
+html.dark .topbar {
+  background: var(--main-shell-bg);
+}
+
 .topbar-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
 .topbar-right { display: flex; align-items: center; gap: 8px; }
 
@@ -449,6 +456,12 @@ input, textarea { font-family: inherit; }
   padding: 24px 32px 48px;
 }
 .content-narrow { max-width: 1280px; margin: 0 auto; }
+
+/* Область скролла под шапкой — тот же тон, что и topbar (без изменения .card) */
+[data-theme='dark'] main.main > div.overflow-auto,
+html.dark main.main > div.overflow-auto {
+  background: var(--main-shell-bg);
+}
 
 /* ============================================================
    CARDS
