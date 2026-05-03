@@ -180,12 +180,6 @@ function ThemeSidebarToggle({ value, onChange, className }) {
   );
 }
 
-/** Переключатель темы до входа в аккаунт (только DOM + localStorage). */
-export function AuthThemeToggle({ className }) {
-  const { theme, setTheme } = useTheme();
-  return <ThemeSegmented value={theme} onChange={setTheme} className={className} />;
-}
-
 /**
  * @param {{
  *   clientUi: { theme: 'dark' | 'light' },

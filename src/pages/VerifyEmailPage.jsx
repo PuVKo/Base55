@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { AuthThemeToggle } from '@/components/ThemeToggle.jsx';
 import { apiFetch } from '@/lib/api';
+import { useAuthPagesDarkTheme } from '@/theme/useAuthPagesDarkTheme.js';
 
 export default function VerifyEmailPage() {
+  useAuthPagesDarkTheme();
   const [params] = useSearchParams();
   const [status, setStatus] = useState('loading');
   const [message, setMessage] = useState('');
@@ -37,9 +38,6 @@ export default function VerifyEmailPage() {
 
   return (
     <div className="relative min-h-screen min-h-[100dvh] bg-notion-bg px-4">
-      <AuthThemeToggle
-        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-[max(1rem,env(safe-area-inset-left))] z-10"
-      />
       <div className="flex min-h-screen min-h-[100dvh] items-center justify-center">
       <div className="w-full max-w-sm rounded-xl border border-notion-border bg-notion-surface/90 p-6 shadow-xl text-center">
         {status === 'loading' ? <p className="text-notion-muted">Подтверждение…</p> : null}

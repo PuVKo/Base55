@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AuthThemeToggle } from '@/components/ThemeToggle.jsx';
 import { apiFetch } from '@/lib/api';
 import { forgotPasswordSchema } from '@/lib/validation';
+import { useAuthPagesDarkTheme } from '@/theme/useAuthPagesDarkTheme.js';
 
 export default function ForgotPasswordPage() {
+  useAuthPagesDarkTheme();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
@@ -27,9 +28,6 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="relative min-h-screen min-h-[100dvh] bg-notion-bg px-4">
-      <AuthThemeToggle
-        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-[max(1rem,env(safe-area-inset-left))] z-10"
-      />
       <div className="flex min-h-screen min-h-[100dvh] items-center justify-center">
       <div className="w-full max-w-sm rounded-xl border border-notion-border bg-notion-surface/90 p-6 shadow-xl">
         <h1 className="text-xl font-semibold text-notion-fg mb-1">Сброс пароля</h1>

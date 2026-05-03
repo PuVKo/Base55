@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { PasswordInput } from '@/components/PasswordInput.jsx';
-import { AuthThemeToggle } from '@/components/ThemeToggle.jsx';
 import { apiFetch } from '@/lib/api';
 import { loginFormSchema } from '@/lib/validation';
+import { useAuthPagesDarkTheme } from '@/theme/useAuthPagesDarkTheme.js';
 
 export default function LoginPage() {
+  useAuthPagesDarkTheme();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [identifier, setIdentifier] = useState('');
@@ -38,7 +39,6 @@ export default function LoginPage() {
 
   return (
     <div className="login-shell px-4">
-      <AuthThemeToggle className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-[max(1rem,env(safe-area-inset-left))] z-10" />
       <div className="login-card">
         <div className="login-brand">
           <div className="brand-mark">B56</div>
