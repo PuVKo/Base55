@@ -1,24 +1,177 @@
-import { useCallback, useRef, useState } from 'react';
-import { Send } from 'lucide-react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Send, Trash2 } from 'lucide-react';
 import { AssistantMarkdown } from '@/components/AssistantMarkdown';
 import { apiFetch } from '@/lib/api';
+import { profileInitials } from '@/lib/userDisplay';
+
+const STORAGE_KEY = 'base56-assistant-thread-v1';
+
+const WELCOME_TEXT =
+  'Привет! Я ассистент Base56: подскажу по записям и полям, помогу сформулировать запрос. Напишите, что нужно — отвечу здесь.';
+
+/** @returns {{ id: string; role: 'user' | 'assistant'; content: string }} */
+function welcomeMessage() {
+  return {
+    id: 'welcome',
+    role: 'assistant',
+    content: WELCOME_TEXT,
+  };
+}
+
+/** @param {unknown} raw */
+function parseStoredMessages(raw) {
+  try {
+    const a = JSON.parse(String(raw));
+    if (!Array.isArray(a)) return null;
+    /** @type {{ id: string; role: 'user' | 'assistant'; content: string }[]} */
+    const out = [];
+    for (const x of a) {
+      if (
+        x &&
+        typeof x === 'object' &&
+        (x.role === 'user' || x.role === 'assistant') &&
+        typeof x.content === 'string'
+      ) {
+        const id =
+          typeof x.id === 'string' && x.id.length > 0
+            ? x.id
+            : typeof crypto !== 'undefined' && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `m-${Date.now()}-${out.length}`;
+        out.push({ id, role: x.role, content: x.content });
+      }
+    }
+    return out.length ? out : null;
+  } catch {
+    return null;
+  }
+}
+
+function loadInitialThread() {
+  if (typeof window === 'undefined') return [welcomeMessage()];
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (!stored) return [welcomeMessage()];
+    const parsed = parseStoredMessages(stored);
+    return parsed ?? [welcomeMessage()];
+  } catch {
+    return [welcomeMessage()];
+  }
+}
+
+function newId() {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
 
 /**
- * Чат с LLM (OpenRouter на сервере). История — только user/assistant для API.
+ * Тот же вид, что аватар в сайдбаре (круг с инициалами, класс `user-avatar`).
+ * @param {{ currentUser: { email?: string | null, login?: string | null } | null }} props
  */
-export function AssistantView() {
+function AssistantUserAvatar({ currentUser }) {
+  return (
+    <div className="user-avatar shrink-0" aria-hidden="true">
+      {currentUser ? profileInitials(currentUser) : '?'}
+    </div>
+  );
+}
+
+function AssistantTyping() {
+  return (
+    <div className="asst-msg bot asst-typing-row" aria-live="polite" aria-busy="true">
+      <div className="asst-avatar shrink-0" aria-hidden>
+        AI
+      </div>
+      <div className="asst-bubble asst-typing-bubble">
+        <span className="asst-typing-dot" />
+        <span className="asst-typing-dot" />
+        <span className="asst-typing-dot" />
+        <span className="sr-only">Ассистент печатает</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Чат с LLM (OpenRouter на сервере). История — user/assistant для API; в UI — с аватарами и сохранением в браузере.
+ * @param {{ currentUser?: { id: string, email: string, login?: string | null } | null }} props
+ */
+export function AssistantView({ currentUser = null }) {
   const [messages, setMessages] = useState(
-    /** @type {{ role: 'user' | 'assistant'; content: string }[]} */ ([]),
+    /** @type {{ id: string; role: 'user' | 'assistant'; content: string }[]} */ (
+      loadInitialThread
+    ),
   );
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(/** @type {string | null} */ (null));
   const bottomRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  const textareaRef = useRef(/** @type {HTMLTextAreaElement | null} */ (null));
+  /** Базовая высота поля (2 строки), макс = ×3 — задаётся после первого layout */
+  const composerMinHRef = useRef(0);
+  const composerMaxHRef = useRef(0);
+  const messagesRef = useRef(messages);
+
+  const syncComposerTextareaHeight = useCallback(() => {
+    const el = textareaRef.current;
+    const minH = composerMinHRef.current;
+    const maxH = composerMaxHRef.current;
+    if (!el || !minH || !maxH) return;
+    el.style.height = 'auto';
+    const sh = el.scrollHeight;
+    const clamped = Math.min(Math.max(sh, minH), maxH);
+    el.style.height = `${clamped}px`;
+    el.style.overflowY = sh > maxH ? 'auto' : 'hidden';
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    if (!composerMinHRef.current && el.offsetHeight > 0) {
+      const h = el.offsetHeight;
+      composerMinHRef.current = h;
+      composerMaxHRef.current = Math.round(h * 3);
+    }
+    syncComposerTextareaHeight();
+  }, [input, loading, syncComposerTextareaHeight]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, [messages]);
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     });
+  }, []);
+
+  useLayoutEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+  }, [messages, loading]);
+
+  const clearChat = useCallback(() => {
+    const fresh = [welcomeMessage()];
+    setMessages(fresh);
+    setError(null);
+    setInput('');
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
+      } catch {
+        /* ignore */
+      }
+    }
+    messagesRef.current = fresh;
   }, []);
 
   const send = useCallback(async () => {
@@ -26,7 +179,10 @@ export function AssistantView() {
     if (!text || loading) return;
     setInput('');
     setError(null);
-    const nextThread = [...messages, { role: 'user', content: text }];
+    const userMsg = { id: newId(), role: /** @type {'user'} */ ('user'), content: text };
+    const prev = messagesRef.current;
+    const nextThread = [...prev, userMsg];
+    messagesRef.current = nextThread;
     setMessages(nextThread);
     setLoading(true);
     scrollToBottom();
@@ -35,64 +191,85 @@ export function AssistantView() {
         typeof Intl !== 'undefined'
           ? Intl.DateTimeFormat().resolvedOptions().timeZone || ''
           : '';
+      const apiMessages = nextThread.map(({ role, content }) => ({ role, content }));
       const data = await apiFetch('/api/assistant/chat', {
         method: 'POST',
-        body: JSON.stringify({ messages: nextThread, timezone }),
+        body: JSON.stringify({ messages: apiMessages, timezone }),
       });
       const content =
         data && typeof data.message === 'object' && typeof data.message.content === 'string'
           ? data.message.content
           : '';
-      setMessages((prev) => [...prev, { role: 'assistant', content: content || '(пустой ответ)' }]);
+      const assistantMsg = {
+        id: newId(),
+        role: /** @type {'assistant'} */ ('assistant'),
+        content: content || '(пустой ответ)',
+      };
+      setMessages((p) => {
+        const merged = [...p, assistantMsg];
+        messagesRef.current = merged;
+        return merged;
+      });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
-      setMessages((prev) => prev.slice(0, -1));
+      setMessages((p) => {
+        const rolled = p.slice(0, -1);
+        messagesRef.current = rolled;
+        return rolled;
+      });
       setInput(text);
     } finally {
       setLoading(false);
       scrollToBottom();
     }
-  }, [input, loading, messages, scrollToBottom]);
+  }, [input, loading, scrollToBottom]);
 
   return (
-    <div className="content flex flex-col flex-1 min-h-0">
-      <div className="asst-shell flex-1 min-h-0 flex flex-col">
-        <div className="asst-intro shrink-0">
-          <h2>Ассистент</h2>
-          <p>
-            Запросы идут на сервер с вашей сессией: модель может читать и менять записи через инструменты. Нужен{' '}
-            <strong>OPENROUTER_API_KEY</strong> в <code className="text-xs opacity-90">server/.env</code>.
-          </p>
-          <p className="text-[12px] mt-2 mb-0">
-            Поле «Клиент» из записей в модель не передаётся. Не дублируйте персональные данные без нужды.
-          </p>
+    <div className="asst-page flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="asst-shell flex min-h-0 flex-1 flex-col">
+        <div className="asst-chat-toolbar shrink-0">
+          <button
+            type="button"
+            className="asst-clear-btn"
+            onClick={clearChat}
+            title="Удалить историю и начать с приветствия"
+          >
+            <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            Очистить чат
+          </button>
         </div>
 
-        <div className="asst-stream flex-1 min-h-0">
-          {messages.length === 0 ? (
-            <p className="muted text-sm">
-              Например: «Покажи записи на завтра» или «Создай запись на 2026-04-25, название Консультация».
-            </p>
-          ) : null}
-          {messages.map((m, i) => (
-            <div key={i} className={`asst-msg ${m.role === 'user' ? 'you' : 'bot'}`}>
-              <div className="asst-avatar shrink-0">{m.role === 'user' ? 'Вы' : 'AI'}</div>
-              <div className="asst-bubble">
+        <div className="asst-stream flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div className="asst-stream-inner">
+            {messages.map((m) => (
+              <div key={m.id} className={`asst-msg ${m.role === 'user' ? 'you' : 'bot'}`}>
                 {m.role === 'user' ? (
-                  <span className="whitespace-pre-wrap">{m.content}</span>
+                  <AssistantUserAvatar currentUser={currentUser} />
                 ) : (
-                  <AssistantMarkdown text={m.content} />
+                  <div className="asst-avatar shrink-0" aria-hidden>
+                    AI
+                  </div>
                 )}
+                <div className="asst-bubble">
+                  {m.role === 'user' ? (
+                    <span className="whitespace-pre-wrap">{m.content}</span>
+                  ) : (
+                    <AssistantMarkdown text={m.content} />
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-          {loading ? <div className="muted text-xs">Думаю…</div> : null}
-          <div ref={bottomRef} />
+            ))}
+            {loading ? <AssistantTyping /> : null}
+            <div ref={bottomRef} className="asst-scroll-anchor" aria-hidden />
+          </div>
         </div>
 
         {error ? (
-          <div className="text-sm px-3 py-2 rounded-[var(--radius-sm)] border border-rose-500/35 bg-rose-950/25 text-rose-200 shrink-0" role="alert">
+          <div
+            className="mx-4 mb-2 shrink-0 rounded-[var(--radius-sm)] border border-rose-500/35 bg-rose-950/25 px-3 py-2 text-sm text-rose-200 sm:mx-6"
+            role="alert"
+          >
             {error}
           </div>
         ) : null}
@@ -100,6 +277,7 @@ export function AssistantView() {
         <div className="asst-composer shrink-0">
           <div className="asst-input-row">
             <textarea
+              ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -120,7 +298,7 @@ export function AssistantView() {
               disabled={loading || !input.trim()}
               className="btn btn-primary shrink-0 self-end"
             >
-              <Send className="w-4 h-4" aria-hidden />
+              <Send className="h-4 w-4" aria-hidden />
               Отправить
             </button>
           </div>

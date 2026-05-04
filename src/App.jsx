@@ -63,7 +63,7 @@ function pluralRecordsRu(n) {
 
 /**
  * @param {object} [props]
- * @param {{ id: string, email: string, login?: string | null, emailVerified?: boolean } | null} [props.currentUser]
+ * @param {{ id: string, email: string, login?: string | null, emailVerified?: boolean, avatarUrl?: string } | null} [props.currentUser]
  */
 export default function App({ currentUser = null }) {
   const {
@@ -357,10 +357,17 @@ export default function App({ currentUser = null }) {
                   </h1>
                 </>
               ) : activeView === 'assistant' ? (
-                <>
-                  <span className="crumb-label">Чат</span>
-                  <h1 className="page-title">Ассистент</h1>
-                </>
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-0.5">
+                  <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0">
+                    <span className="crumb-label">Чат</span>
+                    <h1 className="page-title">Ассистент</h1>
+                  </div>
+                  <p className="m-0 w-full min-w-0 text-[11px] leading-snug text-notion-muted">
+                    Ранний доступ — функционал наращиваем постепенно. Персональные данные в чат не вводите (152‑ФЗ);
+                    поле «Клиент» сюда не передаётся — ФИО и контакты укажите в карточке записи, здесь опишите задачу
+                    без таких сведений.
+                  </p>
+                </div>
               ) : activeView === 'dashboard' ? (
                 <div className="flex w-full min-w-0 items-center gap-2">
                   <div className="min-w-0 flex-1">
@@ -618,8 +625,17 @@ export default function App({ currentUser = null }) {
             {toast}
           </div>
         ) : null}
-        <div ref={mainScrollRef} className="view-transition-main flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable]">
-          <div className="min-h-full">
+        <div
+          ref={mainScrollRef}
+          className={`view-transition-main flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable]${activeView === 'assistant' ? ' assistant-main-scroll' : ''}`}
+        >
+          <div
+            className={
+              activeView === 'assistant'
+                ? 'flex min-h-full min-h-0 flex-col'
+                : 'min-h-full'
+            }
+          >
           {activeView === 'dashboard' ? (
             <DashboardView
               bookings={bookings}
@@ -667,7 +683,7 @@ export default function App({ currentUser = null }) {
               updateClientUi={updateClientUi}
             />
           ) : null}
-          {activeView === 'assistant' ? <AssistantView /> : null}
+          {activeView === 'assistant' ? <AssistantView currentUser={currentUser} /> : null}
           {activeView === 'settings' ? (
             <SettingsView
               fields={fields}

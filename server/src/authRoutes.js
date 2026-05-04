@@ -22,6 +22,14 @@ function normalizeEmail(email) {
     .toLowerCase();
 }
 
+/** Публичный URL аватара (Gravatar по email; d=identicon если нет фото). */
+function gravatarAvatarUrl(email) {
+  const e = normalizeEmail(email);
+  if (!e) return '';
+  const h = createHash('md5').update(e).digest('hex');
+  return `https://www.gravatar.com/avatar/${h}?s=128&d=identicon&r=pg`;
+}
+
 function tokenBytes() {
   return randomBytes(32).toString('hex');
 }
@@ -170,6 +178,7 @@ export function mountAuthRoutes(app, prisma, hooks) {
           email: user.email,
           login: user.login,
           emailVerified: Boolean(user.emailVerifiedAt),
+          avatarUrl: gravatarAvatarUrl(user.email),
         },
       });
     } catch (e) {

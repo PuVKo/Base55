@@ -192,6 +192,44 @@ async function buildFieldsSummary(prisma, userId) {
 }
 
 /**
+ * Подписи вариантов из БД (status / tags / source) — чтобы модель не выводила сырые id и англ. слова.
+ * @param {import('@prisma/client').PrismaClient} prisma
+ * @param {string} userId
+ * @returns {Promise<string>}
+ */
+async function buildOptionLabelLegend(prisma, userId) {
+  const rows = await prisma.fieldDefinition.findMany({
+    where: {
+      userId,
+      type: { in: ['status', 'tags', 'source'] },
+    },
+    orderBy: { sortOrder: 'asc' },
+    select: { key: true, label: true, type: true, options: true },
+  });
+  const lines = [];
+  for (const row of rows) {
+    const raw = row.options && typeof row.options === 'object' && !Array.isArray(row.options) ? row.options : null;
+    const items = raw && Array.isArray(raw.items) ? raw.items : [];
+    const pairs = [];
+    for (const it of items) {
+      if (it && typeof it === 'object' && typeof it.id === 'string' && typeof it.label === 'string') {
+        const id = it.id.trim();
+        const label = it.label.trim();
+        if (id && label) pairs.push(`${id} → «${label}»`);
+      }
+    }
+    if (pairs.length === 0) continue;
+    const fieldTitle = row.label?.trim() || row.key;
+    lines.push(`- ${fieldTitle} (ключ \`${row.key}\`): ${pairs.join('; ')}.`);
+  }
+  if (lines.length === 0) return '';
+  return [
+    'Справочник id → русские подписи из настроек полей (в JSON от инструментов приходят id; пользователю выводи только подписи в кавычках):',
+    ...lines,
+  ].join('\n');
+}
+
+/**
  * Убирает из объекта записи ключи персональных полей перед отправкой в LLM.
  * @param {Record<string, unknown>} bookingLike
  * @param {Set<string>} redactedKeys
@@ -446,24 +484,34 @@ export async function handleAssistantChat(prisma, req, res) {
   const assistantTz = resolveAssistantTimeZone(body.timezone ?? body.timeZone);
   const { writableKeys, redactedKeys } = await loadAssistantFieldKeySets(prisma, userId);
   const fieldsSummary = await buildFieldsSummary(prisma, userId);
+  const optionLegend = await buildOptionLabelLegend(prisma, userId);
 
-  const systemContent = [
+  const systemParts = [
     buildClockContextBlock(assistantTz),
     '',
     'Ты помощник в приложении Base56: записи клиентов (брони) с настраиваемыми полями.',
     'Персональное поле «Клиент» (тип client в БД) никогда не передаётся в модель и недоступно инструментам; не проси ФИО/телефон для записи в чат — пользователь заполняет это в интерфейсе.',
     'Поле даты записи: ключ date, формат YYYY-MM-DD.',
     `Доступные ключи полей пользователя: ${fieldsSummary}`,
+    '',
+    'Статусы, тэги, источник: в JSON от инструментов в полях вроде status, tagIds, sourceId приходят только внутренние id (латиница: booked, processing, photo и т.д.). Пользователю **никогда** не выводи эти id и не подставляй английские «переводы» вроде Booked / Processing — только **русские подписи** из справочника ниже (или из label поля в списке ключей, если справочник пуст).',
+    'Сумма: в данных может быть числовое поле суммы (часто ключ `amount`, смотри список полей). Если суммы нет, null, пусто или значение **0** и это не «осознанный ноль» по смыслу записи — **не пиши «0 ₽» / «0₽»**; опусти сумму в строке или кратко «сумма не указана». Показывай рубли только при ненулевой сумме либо когда пользователь явно спрашивает про ноль.',
+    optionLegend ? `${optionLegend}\n` : '',
     'Вызывай инструменты для чтения и изменения данных; не выдумывай id записей — получай их из list_bookings или get_booking.',
     'Удаляй записи (delete_booking) только если пользователь явно попросил удалить.',
-    'Отвечай по-русски, кратко, по существу. Не расписывай длинные рассуждения — по возможности сразу инструменты или короткий ответ.',
     '',
-    'Оформление ответов (интерфейс рендерит Markdown):',
-    '- Заголовок недели одной строкой (например **20–26 апреля**), без повторов «на этой неделе» + то же в заголовке.',
-    '- Список записей: маркированный список `-`, одна запись = один пункт: дата, название, время, сумма, статус — в одной строке или коротко.',
+    'Стиль ответа (по-русски): пиши живо и по‑человечески, не как сухой отчёт. Допустимы короткие пояснения: что ты сделал с данными, что заметил, какие допущения (1–4 предложения). Можно чуть «подумать вслух», если это помогает пользователю. В конце почти всегда предложи логичный следующий шаг: что уточнить, какую запись открыть, что изменить или спросить дальше. Избегай канцелярита, но не режь ответ до одной строки ради краткости.',
+    '',
+    'Как показывать данные из инструментов (не выкидывай всё в одну строку через запятую):',
+    '- Сначала подумай, что реально нужно для вопроса. Поля, которые не отвечают на запрос (например тэги, источник), можно **не выводить**; если они полезны для контекста — одной короткой фразой, а не перечислением всего подряд.',
+    '- Для нескольких записей удобнее **маркированный список** (одна запись — один пункт, внутри — дата, время, название, по смыслу сумма/статус на русском). Для **многих строк или сравнения полей** используй **Markdown‑таблицу** с понятными русскими заголовками столбцов; не дублируй десятки полей без необходимости.',
+    '- После списка или таблицы **обязательно** добавь короткий **итог** своими словами: что важно, сколько записей попало в выборку, чем помочь дальше.',
+    '',
+    'Оформление (интерфейс рендерит Markdown):',
+    '- Заголовок периода одной строкой (например **4–10 мая 2026 г.**), без тавтологии с текстом пользователя.',
     '- Поле «Клиент» в данных инструментов нет: не добавляй имена в скобках «(Имя)», если имя не является частью title/description из ответа инструментов; не выдумывай контакт.',
-    '- В конце один короткий призыв к действию (например «Нужны подробности по записи — напишите дату или название»), без канцелярита.',
-  ].join('\n');
+  ];
+  const systemContent = systemParts.join('\n');
 
   /** @type {Record<string, string>[]} */
   const messages = [{ role: 'system', content: systemContent }];
@@ -493,7 +541,7 @@ export async function handleAssistantChat(prisma, req, res) {
           messages,
           tools: TOOLS,
           tool_choice: 'auto',
-          temperature: 0.25,
+          temperature: 0.4,
           max_tokens: resolveMaxOutputTokens(),
         }),
       });

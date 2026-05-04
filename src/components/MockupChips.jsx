@@ -14,6 +14,9 @@ const STATUS_LABEL_FALLBACK = {
   pending: 'Не выбран',
 };
 
+/** Подписи «пустого» статуса из fieldOptions / констант — бейдж не показываем */
+const EMPTY_STATUS_LABELS = new Set(['Не выбран', 'Не выбрано']);
+
 /**
  * Статус: без `className` — прежние CSS-токены макета; с `className` — цвета из настроек поля (БД).
  * @param {{ status: string, label?: string, className?: string }} p
@@ -44,7 +47,9 @@ export function SourceChip({ name, neutral, className }) {
  * @param {{ fields: unknown[] | undefined, status: string }} p
  */
 export function BookingStatusChip({ fields, status }) {
+  if (status === undefined || status === null || String(status).trim() === '') return null;
   const pill = pillDisplayForField(fields, 'status', status);
+  if (EMPTY_STATUS_LABELS.has(String(pill.label || '').trim())) return null;
   return <StatusChip status={status} label={pill.label} className={pill.className} />;
 }
 
@@ -52,8 +57,9 @@ export function BookingStatusChip({ fields, status }) {
  * @param {{ fields: unknown[] | undefined, sourceId: string }} p
  */
 export function BookingSourceChip({ fields, sourceId }) {
+  if (sourceId === undefined || sourceId === null || String(sourceId).trim() === '') return null;
   const pill = pillDisplayForField(fields, 'sourceId', sourceId);
-  if (!pill.label) return <SourceChip name="Без источника" neutral />;
+  if (!pill.label || String(pill.label).trim() === 'Без источника') return null;
   return <SourceChip name={pill.label} className={pill.className} />;
 }
 

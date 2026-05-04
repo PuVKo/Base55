@@ -6,6 +6,18 @@ import { notionPillClasses } from '@/lib/notionColors';
 
 /** Как на событии календаря: `.chip` + `.chip-tag` из mockup-base + notionPillClasses из поля */
 const TILE_CHIP_CLASS = 'chip chip-tag max-w-full min-w-0';
+/** Одна строка бейджей: одинаковая для статуса, источника, тегов и multiselect — без «лишней» обёртки у одиночных чипов */
+const TILE_CHIP_ROW_CLASS =
+  'tile-chip-row flex min-h-[22px] flex-wrap content-start items-center gap-x-1.5 gap-y-1.5';
+
+/** На плитке не показываем «пустые» опции (как в MockupChips). */
+function isEmptyOptionChipLabel(label) {
+  const t = String(label ?? '').trim();
+  if (!t) return true;
+  if (t === 'Без источника' || t === 'Не выбран' || t === 'Не выбрано') return true;
+  if (t === '—') return true;
+  return false;
+}
 
 /**
  * Компактное значение поля на плитке (только для списка настроенных полей).
@@ -37,9 +49,10 @@ function renderFieldBlock(field, booking, fields, tagsField, ctx) {
       const n = typeof raw === 'number' ? raw : Number(raw);
       if (!Number.isFinite(n) && key !== 'amount') return null;
       if (key === 'amount') {
+        if (!Number.isFinite(n) || n === 0) return null;
         return (
           <div className="text-[15px] font-semibold tabular-nums leading-none tracking-tight text-[color:var(--accent)]">
-            {formatRub(Number.isFinite(n) ? n : 0)}
+            {formatRub(n)}
           </div>
         );
       }
@@ -91,19 +104,23 @@ function renderFieldBlock(field, booking, fields, tagsField, ctx) {
     case 'select':
     case 'status':
     case 'source': {
-      const pill = pillDisplayForField(fields, key, typeof raw === 'string' ? raw : '');
-      if (field.type === 'source' || key === 'sourceId') {
-        if (!pill.label) return null;
-        return <span className={`${TILE_CHIP_CLASS} ${pill.className}`}>{pill.label}</span>;
-      }
-      return <span className={`${TILE_CHIP_CLASS} ${pill.className}`}>{pill.label}</span>;
+      const rawStr =
+        typeof raw === 'string' ? raw.trim() : raw === undefined || raw === null ? '' : String(raw);
+      if (!rawStr) return null;
+      const pill = pillDisplayForField(fields, key, typeof raw === 'string' ? raw.trim() : String(raw));
+      if (isEmptyOptionChipLabel(pill.label)) return null;
+      return (
+        <div className={TILE_CHIP_ROW_CLASS}>
+          <span className={`${TILE_CHIP_CLASS} ${pill.className}`}>{pill.label}</span>
+        </div>
+      );
     }
     case 'multiselect': {
       const arr = Array.isArray(raw) ? raw.filter((x) => typeof x === 'string') : [];
       if (!arr.length) return null;
       const items = getFieldOptionItems(field);
       return (
-        <div className="flex flex-wrap gap-[3px]">
+        <div className={TILE_CHIP_ROW_CLASS}>
           {arr.map((id) => {
             const opt = items.find((x) => x.id === id);
             const cls = opt ? notionPillClasses(opt.color || 'gray') : notionPillClasses('gray');
@@ -121,7 +138,7 @@ function renderFieldBlock(field, booking, fields, tagsField, ctx) {
       const arr = Array.isArray(booking.tagIds) ? booking.tagIds.filter((x) => typeof x === 'string') : [];
       if (!arr.length) return null;
       return (
-        <div className="flex flex-wrap gap-[3px]">
+        <div className={TILE_CHIP_ROW_CLASS}>
           {arr.map((tid) => {
             const pill = tagPillFromFieldOrConstants(tagsField, tid);
             if (!pill) return null;
@@ -290,6 +307,8 @@ export function GalleryTileBookingContent({ booking, fields, galleryTileFieldVis
     return renderFieldBlock(field, booking, fields, tagsField, ctx);
   }
 
+  const hasVisibleAmount = amountFields.some((field) => Boolean(blockContent(field)));
+
   if (!compact) {
     const { prose, chips, client, comments } = partitionGalleryMiddleFields(afterDateTimeFields);
     const hasComments = comments.length > 0;
@@ -335,25 +354,15 @@ export function GalleryTileBookingContent({ booking, fields, galleryTileFieldVis
 
           {chips.length > 0 ? (
             <div className="tile-tags min-w-0 w-full">
-              <div className="flex flex-wrap content-start items-start gap-[3px]">
-                {chips.map((field) => {
-                  const block = blockContent(field);
-                  if (!block) return null;
-                  const fullRow = field.type === 'multiselect' || field.type === 'tags';
-                  return (
-                    <div
-                      key={field.id}
-                      className={
-                        fullRow
-                          ? 'w-full min-w-0 shrink-0 basis-full'
-                          : 'max-w-full min-w-0 shrink-0 basis-auto'
-                      }
-                    >
-                      {block}
-                    </div>
-                  );
-                })}
-              </div>
+              {chips.map((field) => {
+                const block = blockContent(field);
+                if (!block) return null;
+                return (
+                  <div key={field.id} className="min-w-0 w-full shrink-0">
+                    {block}
+                  </div>
+                );
+              })}
             </div>
           ) : null}
 
@@ -368,19 +377,25 @@ export function GalleryTileBookingContent({ booking, fields, galleryTileFieldVis
           })}
         </div>
 
-        {hasAmount ? (
-          <div className="tile-foot mt-auto flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1">
-            <div className="min-w-0 flex flex-col items-start gap-0.5">
-              {amountFields.map((field) => {
-                const block = blockContent(field);
-                if (!block) return null;
-                return (
-                  <div key={field.id} className="tile-amount text-left">
-                    {block}
-                  </div>
-                );
-              })}
-            </div>
+        {hasVisibleAmount || hasComments ? (
+          <div
+            className={`tile-foot mt-auto flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 ${
+              hasVisibleAmount && hasComments ? 'justify-between' : hasComments ? 'justify-end' : 'justify-start'
+            }`}
+          >
+            {hasVisibleAmount ? (
+              <div className="min-w-0 flex flex-col items-start gap-0.5">
+                {amountFields.map((field) => {
+                  const block = blockContent(field);
+                  if (!block) return null;
+                  return (
+                    <div key={field.id} className="tile-amount text-left">
+                      {block}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
             {hasComments ? (
               <div className="min-w-0 flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
                 {comments.map((field) => {
@@ -394,18 +409,6 @@ export function GalleryTileBookingContent({ booking, fields, galleryTileFieldVis
                 })}
               </div>
             ) : null}
-          </div>
-        ) : hasComments ? (
-          <div className="tile-foot mt-auto flex shrink-0 flex-wrap items-center gap-2">
-            {comments.map((field) => {
-              const block = blockContent(field);
-              if (!block) return null;
-              return (
-                <div key={field.id} className="min-w-0">
-                  {block}
-                </div>
-              );
-            })}
           </div>
         ) : null}
       </div>
@@ -438,7 +441,7 @@ export function GalleryTileBookingContent({ booking, fields, galleryTileFieldVis
             </div>
           ) : null}
         </div>
-        {hasAmount ? (
+        {hasVisibleAmount ? (
           <div className="mt-auto w-full shrink-0 border-t border-notion-border/25 pt-1.5">
             {amountFields.map((field) => {
               const block = renderFieldBlock(field, booking, fields, tagsField, ctx);

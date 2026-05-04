@@ -1,22 +1,11 @@
 import { ChevronLeft } from 'lucide-react';
 import { SettingsThemeToggle } from '@/components/ThemeToggle.jsx';
 import { MAIN_VIEWS } from '@/navConfig';
-
-/**
- * @param {{ login?: string | null, email?: string | null }} user
- */
-function profileInitials(user) {
-  const login = user.login?.trim();
-  if (login && login.length >= 2) return login.slice(0, 2).toUpperCase();
-  if (login) return login.slice(0, 1).toUpperCase();
-  const local = user.email?.split('@')[0]?.trim() || '';
-  if (local.length >= 2) return local.slice(0, 2).toUpperCase();
-  return (local[0] || '?').toUpperCase();
-}
+import { profileInitials } from '@/lib/userDisplay';
 
 /**
  * @param {object} props
- * @param {{ id: string, email: string, login?: string | null } | null} [props.currentUser]
+ * @param {{ id: string, email: string, login?: string | null, avatarUrl?: string } | null} [props.currentUser]
  * @param {() => void} [props.onOpenProfileSettings]
  * @param {boolean} props.collapsed
  * @param {() => void} props.onToggleCollapse
@@ -49,11 +38,8 @@ export function Sidebar({
         onClick={onToggleCollapse}
         title={collapsed ? 'Развернуть меню' : 'Свернуть меню'}
       >
-        <ChevronLeft
-          size={14}
-          style={{ transform: collapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
-        />
-        {!collapsed ? <span className="collapse-text">Свернуть</span> : null}
+        <ChevronLeft size={14} className="sidebar-collapse-chevron shrink-0" aria-hidden />
+        <span className="collapse-text">Свернуть</span>
       </button>
 
       <nav className="nav">
@@ -75,7 +61,13 @@ export function Sidebar({
           <SettingsThemeToggle
             clientUi={clientUi}
             updateClientUi={updateClientUi}
-            variant={collapsed ? 'toggle' : 'sidebar'}
+            variant="sidebar"
+            narrow={collapsed}
+            className={
+              collapsed
+                ? 'h-[30px] w-[30px] min-h-[30px] min-w-[30px] [&_svg]:h-[15px] [&_svg]:w-[15px]'
+                : undefined
+            }
           />
         </div>
         {currentUser ? (

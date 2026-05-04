@@ -6,7 +6,7 @@ import { apiFetch } from '@/lib/api';
 export function ProtectedApp() {
   const [state, setState] = useState(/** @type {'loading' | 'authed' | 'guest' | 'error'} */ ('loading'));
   const [currentUser, setCurrentUser] = useState(
-    /** @type {{ id: string, email: string, login?: string | null, emailVerified?: boolean } | null} */ (null),
+    /** @type {{ id: string, email: string, login?: string | null, emailVerified?: boolean, avatarUrl?: string } | null} */ (null),
   );
   const [loadError, setLoadError] = useState(/** @type {string | null} */ (null));
   const [loadAttempt, setLoadAttempt] = useState(0);

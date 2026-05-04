@@ -147,6 +147,10 @@ export function CalendarView({
     const st = mapBookingStatusToMockup(b.status);
     const dateShort = typeof b.date === 'string' ? b.date.slice(8, 10) : '';
     const monthShort = typeof b.date === 'string' ? b.date.slice(5, 7) : '';
+    const timeTrim = typeof b.timeRange === 'string' ? b.timeRange.trim() : '';
+    const dateDot = dateShort && monthShort ? `${dateShort}.${monthShort}` : '';
+    const timeLine =
+      dateDot && timeTrim ? `${dateDot} · ${timeTrim}` : dateDot || timeTrim || null;
     return (
       <button
         key={b.id}
@@ -181,9 +185,7 @@ export function CalendarView({
         }`}
       >
         <div className="cal-event-title">{b.title || 'Без названия'}</div>
-        <div className="cal-event-time">
-          {dateShort}.{monthShort} · {b.timeRange || '—'}
-        </div>
+        {timeLine ? <div className="cal-event-time">{timeLine}</div> : null}
         {b.description ? (
           <div className="cal-event-desc">{b.description}</div>
         ) : null}

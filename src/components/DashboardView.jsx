@@ -12,7 +12,7 @@ import {
 } from '@/lib/dashboardStats';
 import { filterByCalendarYear, filterByMonth } from '@/lib/bookingUtils';
 import { BookingSourceChip, BookingStatusChip } from '@/components/MockupChips.jsx';
-import { formatDateRu, formatOrderCountRu, formatRub } from '@/lib/format';
+import { formatDateDdMmYyyy, formatOrderCountRu, formatRub } from '@/lib/format';
 
 /** Короткая сумма над столбцом */
 function barTopLabel(sum) {
@@ -556,7 +556,11 @@ export function DashboardView({ bookings, monthCursor, fields, onOpenBooking, da
                       <div className="proj-row-foot">
                         <div className="proj-meta">
                           <span className="proj-meta-line tabular-nums">
-                            <span className="proj-date">{formatDateRu(b.date)}</span>
+                            <span className="proj-date">
+                              {[formatDateDdMmYyyy(b.date), typeof b.timeRange === 'string' ? b.timeRange.trim() : '']
+                                .filter(Boolean)
+                                .join(' · ')}
+                            </span>
                           </span>
                           <BookingStatusChip fields={fields} status={b.status} />
                         </div>
