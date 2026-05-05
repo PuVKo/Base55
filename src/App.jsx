@@ -127,12 +127,11 @@ export default function App({ currentUser = null }) {
     });
   }
 
-  function setSettingsTabWithTransition(/** @type {'profile' | 'fields'} */ tab) {
+  /** Переключение вкладок внутри настроек без View Transition — иначе дёргается и шапка, и табы. */
+  function switchSettingsTab(/** @type {'profile' | 'fields'} */ tab) {
     if (tab === settingsTab) return;
-    runViewTransition(() => {
-      setSettingsTab(tab);
-      scrollMainToTop();
-    });
+    setSettingsTab(tab);
+    scrollMainToTop();
   }
 
   const galleryPeriodMode = clientUi.galleryFilters.period;
@@ -350,12 +349,12 @@ export default function App({ currentUser = null }) {
             <div className="topbar-left min-w-0 flex-1">
               <div className="min-w-0 flex-1">
               {activeView === 'settings' ? (
-                <>
-                  <span className="crumb-label">Настройки</span>
-                  <h1 className="page-title">
-                    {settingsTab === 'profile' ? 'Профиль' : 'Поля и карточка'}
-                  </h1>
-                </>
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-0.5">
+                  <h1 className="page-title">Настройки</h1>
+                  <p className="m-0 w-full min-w-0 text-[11px] leading-snug text-[color:var(--text-muted)]">
+                    Поля формы записей, аккаунт и резервные копии данных.
+                  </p>
+                </div>
               ) : activeView === 'assistant' ? (
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-0.5">
                   <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0">
@@ -698,7 +697,7 @@ export default function App({ currentUser = null }) {
               flushNow={flushNow}
               currentUser={currentUser}
               settingsTab={settingsTab}
-              onSettingsTabChange={setSettingsTabWithTransition}
+              onSettingsTabChange={switchSettingsTab}
             />
           ) : null}
           </div>
