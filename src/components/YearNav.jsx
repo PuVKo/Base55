@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { format, getYear } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { runViewTransition } from '@/viewTransition.js';
@@ -43,7 +43,10 @@ export function YearNav({ monthCursor, onPrev, onNext, onToday, variant = 'defau
       </div>
       <button
         type="button"
-        onClick={() => runViewTransition(onToday)}
+        onClick={() => {
+          if (getYear(monthCursor) === getYear(new Date())) return;
+          runViewTransition(onToday);
+        }}
         className="inline-flex h-8 max-h-8 min-h-8 shrink-0 items-center justify-center rounded-full border border-transparent bg-transparent px-3 text-sm font-medium leading-none tracking-normal text-notion-muted transition-colors hover:bg-notion-hover hover:text-notion-fg touch-manipulation"
       >
         Сегодня

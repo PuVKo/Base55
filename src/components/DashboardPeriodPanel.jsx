@@ -19,6 +19,7 @@ const PERIOD_OPTIONS = [
  * @param {'month' | 'year' | 'all'} dashboardPeriod
  */
 export function selectDashboardPeriod(pid, dashboardPeriod, onChangePeriod, setMonthCursor) {
+  if (pid === dashboardPeriod) return;
   runViewTransition(() => {
     onChangePeriod(pid);
     if (pid === 'year') setMonthCursor((c) => startOfMonth(startOfYear(c)));
