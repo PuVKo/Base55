@@ -91,9 +91,13 @@ html.light input[type='time']::-webkit-calendar-picker-indicator {
     z-index: 1;
   }
 
-  /* Сайдбар: отдельный снимок при VT (в т.ч. смена темы), мягче чем мгновенный перекрас */
+  /* Сайдбар и шапка: свои слои VT без анимации — только контент main анимируется */
   .sidebar {
     view-transition-name: app-sidebar;
+  }
+
+  .topbar {
+    view-transition-name: app-topbar;
   }
 
   ::view-transition-group(main-content) {
@@ -102,6 +106,10 @@ html.light input[type='time']::-webkit-calendar-picker-indicator {
 
   ::view-transition-group(app-sidebar) {
     z-index: 0;
+  }
+
+  ::view-transition-group(app-topbar) {
+    z-index: 1;
   }
 
   /* Только mobile: именованная группа таб-бара выше main-content (Chromium VT слои) */
@@ -120,17 +128,6 @@ html.light input[type='time']::-webkit-calendar-picker-indicator {
     }
   }
 
-  /*
-   * Смена темы с координатами клика: один снимок root + круговая «волна» новой темы.
-   * Иначе именованные группы дают несколько независимых кроссфейдов — выглядит рывком.
-   */
-  html.theme-vt-wave .view-transition-main,
-  html.theme-vt-wave .sidebar,
-  html.theme-vt-wave .view-transition-settings-panel,
-  html.theme-vt-wave .view-transition-mobile-nav,
-  html.theme-vt-wave .view-transition-auth-panel {
-    view-transition-name: none !important;
-  }
 }
 
 /*
@@ -182,36 +179,20 @@ html.light input[type='time']::-webkit-calendar-picker-indicator {
   }
 }
 
-@keyframes vt-sidebar-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
-@keyframes vt-sidebar-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+/*
+ * Корень документа: без crossfade, иначе при VT моргает весь UI вне именованных групп (шапка, тост и т.д.).
+ * Сайдбар и топбар: без анимации — только область main-content (и settings-panel / auth-panel).
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none !important;
 }
 
 ::view-transition-old(app-sidebar),
-::view-transition-new(app-sidebar) {
-  animation-duration: 0.4s;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-::view-transition-old(app-sidebar) {
-  animation-name: vt-sidebar-out;
-}
-
-::view-transition-new(app-sidebar) {
-  animation-name: vt-sidebar-in;
+::view-transition-new(app-sidebar),
+::view-transition-old(app-topbar),
+::view-transition-new(app-topbar) {
+  animation: none !important;
 }
 
 ::view-transition-old(main-content),
@@ -256,43 +237,6 @@ html.light input[type='time']::-webkit-calendar-picker-indicator {
 ::view-transition-new(settings-panel) {
   animation-name: vt-settings-in;
 }
-
-@keyframes theme-vt-wave-reveal {
-  from {
-    clip-path: circle(0px at var(--theme-vt-x, 50%) var(--theme-vt-y, 50%));
-  }
-  to {
-    clip-path: circle(200vmax at var(--theme-vt-x, 50%) var(--theme-vt-y, 50%));
-  }
-}
-
-/*
- * Смена темы с клика: ThemeProvider вешает .theme-vt-wave на documentElement и задаёт --theme-vt-x/y.
- * Псевдо VT цепляются к :root (как в UA stylesheet MDN), не к «html.class::…» — иначе правила не матчятся и волны нет.
- */
-:root.theme-vt-wave::view-transition-old(root) {
-  animation: none !important;
-  z-index: 0;
-}
-
-:root.theme-vt-wave::view-transition-new(root) {
-  animation: theme-vt-wave-reveal 0.52s cubic-bezier(0.22, 1, 0.32, 1) both !important;
-  z-index: 1;
-  mix-blend-mode: normal;
-  will-change: clip-path;
-}
-
-:root.theme-vt-wave::view-transition-group(root) {
-  animation-duration: 0.52s;
-  /* Выше именованных групп (main/sidebar), без перехвата системных оверлеев */
-  z-index: 100;
-}
-
-/*
- * Смена темы: ThemeProvider вызывает document.startViewTransition при setTheme.
- * Без .theme-vt-wave именованные группы (main-content, settings-panel) анимируются правилами выше;
- * с .theme-vt-wave они отключаются — один root и круговая волна.
- */
 
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),

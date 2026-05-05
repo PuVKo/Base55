@@ -276,13 +276,9 @@ export function SettingsThemeToggle({
   narrow = false,
 }) {
   const { setTheme } = useTheme();
-  const apply = (/** @type {'dark' | 'light'} */ t, /** @type {import('react').MouseEvent | undefined} */ e) => {
+  const apply = (/** @type {'dark' | 'light'} */ t) => {
     updateClientUi((prev) => ({ ...prev, theme: t }));
-    const origin =
-      e && typeof e.clientX === 'number' && typeof e.clientY === 'number'
-        ? { clientX: e.clientX, clientY: e.clientY }
-        : undefined;
-    setTheme(t, origin);
+    setTheme(t);
   };
   if (variant === 'toggle') {
     return <ThemeToggleRound value={clientUi.theme} onChange={apply} className={className} />;

@@ -976,17 +976,29 @@ html.light main.main > div.overflow-auto.assistant-main-scroll,
 }
 .set-section { margin-bottom: 28px; }
 .set-section h2 {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   margin: 0 0 8px;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  color: var(--text);
 }
 .set-section .section-desc {
   font-size: 12px;
   color: var(--text-muted);
   margin: 0 0 16px;
   line-height: 1.6;
-  max-width: 60ch;
+  max-width: 62ch;
+}
+
+/* Список полей на странице настроек (строки толще mockup field-row — своя сетка) */
+.settings-field-shell {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-elev-1);
+  overflow: hidden;
+}
+.settings-field-shell > li + li {
+  border-top: 1px solid var(--border);
 }
 
 .field-list {

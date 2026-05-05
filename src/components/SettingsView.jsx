@@ -68,56 +68,60 @@ function ProfileAccountPanel({ currentUser, flushNow }) {
   }
 
   if (!currentUser) {
-    return <p className="text-sm text-notion-muted">Не удалось загрузить данные профиля.</p>;
+    return <p className="text-sm muted">Не удалось загрузить данные профиля.</p>;
   }
 
   return (
-    <div className="space-y-8">
-      <div className="rounded-xl border border-violet-500/20 bg-violet-950/20 px-4 py-3 flex items-start gap-3">
-        <CreditCard className="w-5 h-5 text-violet-300/90 shrink-0 mt-0.5" aria-hidden />
-        <div>
-          <p className="text-sm font-medium text-notion-fg">Оплаты и подписка</p>
-          <p className="text-xs text-notion-muted mt-1 leading-relaxed">
-            Скоро здесь же появятся тарифы, счета и история платежей — следите за обновлениями.
-          </p>
+    <div className="flex flex-col gap-5">
+      <div className="profile-card hl">
+        <div className="flex items-start gap-3">
+          <CreditCard className="h-5 w-5 shrink-0 text-[color:var(--accent)] mt-0.5" aria-hidden />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-[color:var(--text)]">Оплаты и подписка</p>
+            <p className="text-xs text-[color:var(--text-muted)] mt-1.5 leading-relaxed">
+              Скоро здесь появятся тарифы, счета и история платежей.
+            </p>
+          </div>
         </div>
       </div>
 
-      <section>
-        <h2 className="text-lg font-semibold text-notion-fg tracking-tight mb-4">Данные аккаунта</h2>
-        <dl className="space-y-4 text-sm">
-          <div>
-            <dt className="text-xs text-notion-muted mb-1">Почта</dt>
-            <dd className="text-notion-fg break-all">{currentUser.email}</dd>
+      <section className="profile-card">
+        <h2 className="text-[15px] font-semibold text-[color:var(--text)] tracking-tight mb-4">Данные аккаунта</h2>
+        <dl>
+          <div className="profile-row">
+            <dt className="profile-label">Почта</dt>
+            <dd className="profile-value break-all">{currentUser.email}</dd>
           </div>
-          <div>
-            <dt className="text-xs text-notion-muted mb-1">Логин</dt>
-            <dd className={`text-sm ${currentUser.login ? 'text-notion-fg font-mono' : 'text-notion-muted'}`}>
+          <div className="profile-row">
+            <dt className="profile-label">Логин</dt>
+            <dd
+              className={`profile-value font-mono ${currentUser.login ? '' : 'text-[color:var(--text-muted)] not-italic font-normal'}`}
+            >
               {currentUser.login ?? 'не задан — вход по email'}
             </dd>
           </div>
-          <div>
-            <dt className="text-xs text-notion-muted mb-1">Почта подтверждена</dt>
-            <dd className="text-notion-fg">{currentUser.emailVerified ? 'Да' : 'Нет'}</dd>
+          <div className="profile-row">
+            <dt className="profile-label">Почта подтверждена</dt>
+            <dd className="profile-value">{currentUser.emailVerified ? 'Да' : 'Нет'}</dd>
           </div>
         </dl>
       </section>
 
-      <section className="rounded-xl border border-notion-border bg-notion-surface/60 p-4">
-        <h3 className="text-sm font-medium text-notion-fg mb-2">Смена пароля</h3>
-        <p className="text-xs text-notion-muted mb-4 leading-relaxed">
-          Отправим на эту почту письмо со ссылкой для установки нового пароля (как в разделе «Забыли пароль»).
+      <section className="card">
+        <h3 className="card-title mb-1">Смена пароля</h3>
+        <p className="card-sub mb-4">
+          Отправим на вашу почту ссылку для нового пароля (как в «Забыли пароль» на экране входа).
         </p>
         <button
           type="button"
           disabled={pwdBusy || pwdSent}
           onClick={() => void sendPasswordResetEmail()}
-          className="inline-flex items-center justify-center rounded-lg bg-white text-notion-bg px-4 py-2.5 text-sm font-medium hover:bg-white/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+          className="btn btn-primary disabled:opacity-50 disabled:pointer-events-none"
         >
           {pwdSent ? 'Письмо запрошено' : pwdBusy ? 'Отправка…' : 'Отправить письмо для смены пароля'}
         </button>
         {pwdSent ? (
-          <p className="text-xs text-notion-muted mt-3 leading-relaxed">
+          <p className="text-xs text-[color:var(--text-muted)] mt-3 leading-relaxed">
             {pwdMailKind === 'verify'
               ? 'На почту отправлено письмо для подтверждения адреса. После подтверждения можно снова запросить ссылку для смены пароля.'
               : 'Проверьте входящие и папку «Спам». Ссылка для нового пароля действует ограниченное время.'}
@@ -125,12 +129,8 @@ function ProfileAccountPanel({ currentUser, flushNow }) {
         ) : null}
       </section>
 
-      <button
-        type="button"
-        onClick={() => void logout()}
-        className="inline-flex items-center gap-2 text-sm text-notion-muted hover:text-notion-fg border border-notion-border rounded-lg px-3 py-2 transition-colors"
-      >
-        <LogOut className="w-4 h-4 shrink-0" />
+      <button type="button" onClick={() => void logout()} className="btn btn-ghost self-start gap-2 px-3">
+        <LogOut className="h-4 w-4 shrink-0" />
         Выйти из аккаунта
       </button>
     </div>
@@ -448,57 +448,52 @@ export function SettingsView({
 
   return (
     <div className="content min-h-0">
-      <div className="set-shell max-w-[720px] mx-auto w-full pb-16">
-      <div className="set-tabs">
-        <div className="tabs !flex w-full mb-8">
-        <button
-          type="button"
-          onClick={() => onSettingsTabChange('fields')}
-          className={`tab flex-1 ${settingsTab === 'fields' ? 'active' : ''}`}
-        >
-          Свойства заказа
-        </button>
-        <button
-          type="button"
-          onClick={() => onSettingsTabChange('profile')}
-          className={`tab flex-1 ${settingsTab === 'profile' ? 'active' : ''}`}
-        >
-          Профиль
-        </button>
+      <div className="set-shell w-full pb-16">
+        <div className="mb-8 flex justify-center">
+          <div className="tabs w-full max-w-lg">
+            <button
+              type="button"
+              onClick={() => onSettingsTabChange('fields')}
+              className={`tab flex-1 text-center ${settingsTab === 'fields' ? 'active' : ''}`}
+            >
+              Поля заказа
+            </button>
+            <button
+              type="button"
+              onClick={() => onSettingsTabChange('profile')}
+              className={`tab flex-1 text-center ${settingsTab === 'profile' ? 'active' : ''}`}
+            >
+              Профиль
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className="view-transition-settings-panel">
-      {settingsTab === 'profile' ? (
-        <ProfileAccountPanel currentUser={currentUser} flushNow={flushNow} />
-      ) : (
-        <>
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-notion-fg tracking-tight">Настройки приложения</h1>
-        <p className="text-sm text-notion-muted mt-2 leading-relaxed">
-          Здесь вы настраиваете поля в форме заказа. Ручка слева от строки — перетащите её, чтобы поменять порядок
-          полей. По названию поля можно сменить подпись. У статуса, тегов и источника откройте «Варианты», чтобы
-          задать или изменить список значений. Значок глаза убирает поле из формы (сами заказы при этом не удаляются).
-          Внизу — выгрузка и загрузка резервной копии в файл, а также сброс всех заказов. Поле «Дата» удалить нельзя:
-          без него не работает календарь.
-        </p>
-        <button
-          type="button"
-          onClick={() => void logout()}
-          className="mt-4 inline-flex items-center gap-2 text-sm text-notion-muted hover:text-notion-fg border border-notion-border rounded-lg px-3 py-2 transition-colors"
-        >
-          <LogOut className="w-4 h-4 shrink-0" />
-          Выйти из аккаунта
-        </button>
-      </div>
+        <div className="view-transition-settings-panel">
+          {settingsTab === 'profile' ? (
+            <ProfileAccountPanel currentUser={currentUser} flushNow={flushNow} />
+          ) : (
+            <>
+              <div className="set-section">
+                <h2>Поля и карточка записи</h2>
+                <p className="section-desc">
+                  Настройте поля формы заказа. Перетащите строку за ручку слева, чтобы изменить порядок. По названию
+                  можно править подпись. У статуса, тегов и источника откройте «Варианты», чтобы задать список значений.
+                  Глаз скрывает поле в форме (записи не удаляются). Ниже — резервная копия и сброс заказов. Поле «Дата»
+                  удалить нельзя — без него не работает календарь.
+                </p>
+                <button type="button" onClick={() => void logout()} className="btn btn-ghost gap-2 px-3 mt-1">
+                  <LogOut className="h-4 w-4 shrink-0" />
+                  Выйти из аккаунта
+                </button>
+              </div>
 
-      {msg ? (
-        <p className="text-sm text-rose-300 bg-rose-950/30 border border-rose-500/25 rounded-lg px-3 py-2 mb-6">
-          {msg}
-        </p>
-      ) : null}
+              {msg ? (
+                <p className="text-sm text-rose-300 bg-rose-950/30 border border-rose-500/25 rounded-[var(--radius-sm)] px-3 py-2 mb-6">
+                  {msg}
+                </p>
+              ) : null}
 
-      <ul className="rounded-lg border border-notion-border/80 bg-notion-surface/80 overflow-hidden divide-y divide-notion-border/60">
+              <ul className="settings-field-shell mb-1">
         {sorted.map((f) => {
           const { Icon, label: typeLabel } = getFieldTypeMeta(f.type, f.key);
           const IconOverride = iconComponentByKey(f.iconKey);
@@ -509,7 +504,7 @@ export function SettingsView({
           return (
             <li key={f.id} className={!f.visible ? 'opacity-55' : ''}>
               <div
-                className="flex items-start gap-1 sm:gap-2 py-2.5 pl-2 pr-2 sm:pr-3 hover:bg-notion-hover"
+                className="flex items-start gap-1 sm:gap-2 py-2.5 pl-2 pr-2 sm:pr-3 hover:bg-[color:var(--surface-hover)]"
                 onDragOver={(e) => {
                   e.preventDefault();
                   e.dataTransfer.dropEffect = 'move';
@@ -528,7 +523,7 @@ export function SettingsView({
                     e.dataTransfer.effectAllowed = 'move';
                   }}
                   onDragEnd={() => {}}
-                  className="p-1.5 mt-0.5 rounded text-notion-muted hover:text-notion-fg hover:bg-notion-hover cursor-grab active:cursor-grabbing touch-manipulation shrink-0"
+                  className="p-1.5 mt-0.5 rounded text-[color:var(--text-muted)] hover:text-[color:var(--text)] hover:bg-[color:var(--surface-hover)] cursor-grab active:cursor-grabbing touch-manipulation shrink-0"
                   aria-label="Перетащить"
                 >
                   <GripVertical className="w-4 h-4" />
@@ -536,7 +531,7 @@ export function SettingsView({
                 <button
                   type="button"
                   onClick={() => setIconPickerId((cur) => (cur === f.id ? null : f.id))}
-                  className="p-1.5 mt-0.5 -ml-1 rounded-md text-notion-muted/70 hover:bg-notion-hover hover:text-notion-fg shrink-0"
+                  className="p-1.5 mt-0.5 -ml-1 rounded-md text-[color:var(--text-faint)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)] shrink-0"
                   title="Значок"
                   aria-expanded={iconOpen}
                 >
@@ -544,7 +539,7 @@ export function SettingsView({
                 </button>
                 <div className="flex-1 min-w-0 pt-1">
                   <EditableLabel initial={f.label} onCommit={(t) => updateLabel(f, t)} />
-                  <div className="text-[11px] text-notion-muted/70 mt-0.5 truncate">
+                  <div className="text-[11px] text-[color:var(--text-faint)] mt-0.5 truncate">
                     {typeLabel}
                     {f.system ? ' · системное' : ''}
                   </div>
@@ -554,7 +549,7 @@ export function SettingsView({
                     <button
                       type="button"
                       onClick={() => setExpandedId(open ? null : f.id)}
-                      className="p-2 rounded-md text-notion-muted hover:bg-notion-hover hover:text-notion-fg"
+                      className="p-2 rounded-md text-[color:var(--text-muted)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)]"
                       title="Варианты"
                       aria-expanded={open}
                     >
@@ -564,7 +559,7 @@ export function SettingsView({
                   <button
                     type="button"
                     onClick={() => toggleVisible(f)}
-                    className="p-2 rounded-md text-notion-muted hover:bg-notion-hover hover:text-notion-fg"
+                    className="p-2 rounded-md text-[color:var(--text-muted)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)]"
                     title={f.visible ? 'Скрыть в форме' : 'Показать'}
                   >
                     {f.visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
@@ -582,9 +577,9 @@ export function SettingsView({
                 </div>
               </div>
               {iconOpen ? (
-                <div className="px-3 pb-4 pl-11 sm:pl-12 bg-black/20 border-t border-notion-border/40">
+                <div className="px-3 pb-4 pl-11 sm:pl-12 bg-[color:var(--bg-elev-2)] border-t border-[color:var(--border)]">
                   <div className="flex items-center justify-between gap-2 pt-3 pb-2">
-                    <p className="text-[11px] text-notion-muted/80">Значок</p>
+                    <p className="text-[11px] text-[color:var(--text-muted)]">Значок</p>
                     <button
                       type="button"
                       onClick={() => {
@@ -592,22 +587,22 @@ export function SettingsView({
                         setIconPickerId(null);
                         setIconQuery('');
                       }}
-                      className="text-[11px] text-notion-muted hover:text-notion-fg"
+                      className="text-[11px] text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
                       title="По типу"
                     >
                       По типу
                     </button>
                   </div>
-                  <div className="rounded-lg border border-notion-border/80 bg-notion-bg/60 p-2.5 flex items-center gap-2 mb-3">
-                    <RowIcon className="w-4 h-4 text-notion-muted/80 shrink-0" aria-hidden />
-                    <span className="text-sm text-notion-fg/90 truncate">{f.label}</span>
+                  <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elev-2)] p-2.5 flex items-center gap-2 mb-3">
+                    <RowIcon className="w-4 h-4 text-[color:var(--text-muted)] shrink-0" aria-hidden />
+                    <span className="text-sm text-[color:var(--text)] truncate">{f.label}</span>
                   </div>
                   <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                     <input
                       value={iconQuery}
                       onChange={(e) => setIconQuery(e.target.value)}
                       placeholder="Поиск значка…"
-                      className="col-span-4 sm:col-span-6 w-full rounded-lg border border-notion-border/80 bg-notion-bg px-3 py-2 text-sm text-notion-fg placeholder:text-notion-muted/60 outline-none focus:ring-1 focus:ring-brand/55"
+                      className="input col-span-4 w-full sm:col-span-6"
                     />
                     {FIELD_ICON_CHOICES.filter((c) => {
                       const q = iconQuery.trim().toLowerCase();
@@ -626,8 +621,8 @@ export function SettingsView({
                           }}
                           className={`flex items-center justify-center px-2 py-2 rounded-lg border transition-colors aspect-square ${
                             selected
-                              ? 'border-violet-500/50 bg-violet-500/10 text-notion-fg'
-                              : 'border-notion-border/80 text-notion-muted hover:bg-notion-hover hover:text-notion-fg'
+                              ? 'border-[color:var(--accent-soft-strong)] bg-[color:var(--accent-soft)] text-[color:var(--text)]'
+                              : 'border-[color:var(--border)] text-[color:var(--text-muted)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)]'
                           }`}
                           title={c.label}
                           aria-label={c.label}
@@ -657,21 +652,21 @@ export function SettingsView({
             setPickerOpen((v) => !v);
             setTypeQuery('');
           }}
-          className="flex items-center gap-2 w-full text-left py-2.5 px-2 -mx-2 rounded-md text-sm text-notion-muted hover:bg-notion-hover hover:text-notion-fg transition-colors"
+                className="add-prop-btn !mt-0 border-[color:var(--border)] text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
         >
           <Plus className="w-4 h-4 shrink-0" />
           Добавить свойство
         </button>
         {pickerOpen ? (
-          <div className="absolute left-0 right-0 top-full z-30 mt-1 rounded-lg border border-notion-border bg-notion-surface shadow-2xl overflow-hidden max-h-80 flex flex-col">
-            <div className="p-2 border-b border-notion-border/80 flex items-center gap-2">
-              <Search className="w-4 h-4 text-notion-muted shrink-0" />
+          <div className="absolute left-0 right-0 top-full z-30 mt-1 flex max-h-80 flex-col overflow-hidden rounded-[var(--radius-md)] border border-[color:var(--border)] bg-[color:var(--bg-elev-2)] shadow-[var(--shadow-lg)]">
+            <div className="p-2 border-b border-[color:var(--border)] flex items-center gap-2">
+              <Search className="w-4 h-4 text-[color:var(--text-muted)] shrink-0" />
               <input
                 autoFocus
                 value={typeQuery}
                 onChange={(e) => setTypeQuery(e.target.value)}
                 placeholder="Поиск типа…"
-                className="flex-1 min-w-0 bg-transparent text-sm text-notion-fg placeholder:text-notion-muted/60 outline-none"
+                className="flex-1 min-w-0 bg-transparent text-sm text-[color:var(--text)] placeholder:text-[color:var(--text-faint)] outline-none"
               />
             </div>
             <ul className="overflow-y-auto py-1">
@@ -679,7 +674,7 @@ export function SettingsView({
                 <li key={t.value}>
                   <button
                     type="button"
-                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-notion-fg/90 hover:bg-notion-hover"
+                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-[color:var(--text)] hover:bg-[color:var(--surface-hover)]"
                     onClick={() => {
                       setPickerOpen(false);
                       setTypeQuery('');
@@ -689,123 +684,121 @@ export function SettingsView({
                       setNewIconQuery('');
                     }}
                   >
-                    <t.Icon className="w-4 h-4 text-notion-muted shrink-0" />
+                    <t.Icon className="w-4 h-4 text-[color:var(--text-muted)] shrink-0" />
                     {t.label}
                   </button>
                 </li>
               ))}
               {filteredTypes.length === 0 ? (
-                <li className="px-3 py-4 text-sm text-notion-muted text-center">Ничего не найдено</li>
+                <li className="px-3 py-4 text-sm text-[color:var(--text-muted)] text-center">Ничего не найдено</li>
               ) : null}
             </ul>
           </div>
         ) : null}
       </div>
 
-      <div className="mt-8 space-y-4">
-        <div>
-          <p className="text-sm text-notion-fg font-medium">Дамп данных</p>
-          <p className="text-xs text-notion-muted mt-1 leading-relaxed">
-            Здесь вы скачиваете или поднимаете резервную копию: заказы, колонки таблицы и настройки галереи в этом
-            браузере. Файл лежит у вас на компьютере — им можно перенести данные на другое устройство или просто
-            сохранить «на всякий случай».
-          </p>
-        </div>
+      <div className="set-section mt-10 mb-0">
+        <h2 className="!mb-2">Резервные копии</h2>
+        <p className="section-desc !mb-6">
+          Скачивайте или восстанавливайте копию: заказы, колонки таблицы и настройки галереи в этом браузере. Файл
+          хранится у вас на устройстве — через него можно перенести данные или сохранить «на всякий случай».
+        </p>
 
-        <div className="rounded-xl border border-violet-500/25 bg-violet-950/15 p-4">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-200">
-              <Download className="w-4 h-4" aria-hidden />
-            </div>
-            <div className="min-w-0 flex-1 space-y-3">
-              <div>
-                <p className="text-sm font-medium text-notion-fg">Экспорт</p>
-                <p className="text-xs text-notion-muted mt-1 leading-relaxed">
-                  Сохраняет на диск файл JSON с вашей таблицей и заказами из этого браузера. В «Год в дампе»:
-                  «Все» — полная копия; если выбрать год — в файл попадут только заказы с датой в этом году.
-                </p>
+        <div className="flex flex-col gap-4">
+          <div className="card">
+            <div className="flex gap-4">
+              <div className="field-icon shrink-0">
+                <Download className="h-4 w-4" aria-hidden />
               </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <label className="flex flex-col gap-1.5 text-xs text-notion-muted sm:max-w-[12rem]">
-                  <span className="text-notion-muted/90">Год в дампе</span>
-                  <select
-                    value={dumpYearKey}
-                    onChange={(e) => setDumpYearKey(e.target.value)}
-                    disabled={dumpBusy}
-                    className="rounded-md border border-notion-border bg-notion-bg px-2 py-2 text-sm text-notion-fg outline-none focus:ring-1 focus:ring-violet-500/50 w-full"
+              <div className="min-w-0 flex-1 space-y-3">
+                <div>
+                  <p className="card-title">Экспорт</p>
+                  <p className="card-sub mt-1">
+                    JSON с таблицей и заказами. «Все» — полная копия; если выбрать год — только записи с датой в этом
+                    году.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <label className="field sm:max-w-[12rem]">
+                    <span className="field-label">Год в дампе</span>
+                    <select
+                      value={dumpYearKey}
+                      onChange={(e) => setDumpYearKey(e.target.value)}
+                      disabled={dumpBusy}
+                      className="input mt-1.5 w-full"
+                    >
+                      <option value="">Все</option>
+                      {dumpYearOptions.map((y) => (
+                        <option key={y} value={String(y)}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    disabled={dumpBusy || resetBusy}
+                    onClick={exportDump}
+                    className="btn btn-primary w-full shrink-0 sm:w-auto disabled:opacity-40"
                   >
-                    <option value="">Все</option>
-                    {dumpYearOptions.map((y) => (
-                      <option key={y} value={String(y)}>
-                        {y}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  disabled={dumpBusy || resetBusy}
-                  onClick={exportDump}
-                  className="w-full sm:w-auto shrink-0 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium disabled:opacity-40"
-                >
-                  {dumpBusy ? 'Экспорт…' : 'Скачать JSON'}
-                </button>
+                    {dumpBusy ? 'Экспорт…' : 'Скачать JSON'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="rounded-xl border border-emerald-500/25 bg-emerald-950/15 p-4">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-200">
-              <Upload className="w-4 h-4" aria-hidden />
+          <div className="card">
+            <div className="flex gap-4">
+              <div className="field-icon shrink-0">
+                <Upload className="h-4 w-4" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1 space-y-3">
+                <div>
+                  <p className="card-title">Импорт</p>
+                  <p className="card-sub mt-1">
+                    Файл .json — скачанный здесь или на другом устройстве. После подтверждения текущие заказы и колонки
+                    заменятся данными из файла.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input
+                    ref={dumpImportRef}
+                    type="file"
+                    accept=".json,application/json"
+                    disabled={dumpBusy}
+                    className="text-xs text-[color:var(--text-muted)] w-full min-w-0 sm:flex-1 file:mr-2 file:rounded-[var(--radius-sm)] file:border-0 file:bg-[color:var(--surface-hover)] file:px-2 file:py-1.5 file:text-xs file:text-[color:var(--text)] file:font-medium"
+                  />
+                  <button
+                    type="button"
+                    disabled={dumpBusy}
+                    onClick={() => openImportConfirm()}
+                    className="btn btn-primary w-full shrink-0 disabled:opacity-40 sm:w-auto"
+                  >
+                    {dumpBusy ? 'Импорт…' : 'Импортировать'}
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="min-w-0 flex-1 space-y-3">
-              <div>
-                <p className="text-sm font-medium text-notion-fg">Импорт</p>
-                <p className="text-xs text-notion-muted mt-1 leading-relaxed">
-                  Файл .json — тот, что скачивали здесь или на другом устройстве. После «Импортировать» откроется окно
-                  подтверждения: при согласии все текущие заказы и колонки таблицы в аккаунте удаляются и полностью
-                  заменяются данными из файла (как чистая установка из копии).
+          </div>
+
+          <div className="card border-rose-500/30 bg-[color:var(--bg-elev-1)]">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <p className="card-title text-rose-200/95">Очистить заказы</p>
+                <p className="card-sub mt-1">
+                  Навсегда удаляет все заказы в аккаунте. Колонки таблицы и поля не меняются.
                 </p>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <input
-                  ref={dumpImportRef}
-                  type="file"
-                  accept=".json,application/json"
-                  disabled={dumpBusy}
-                  className="text-xs text-notion-muted w-full min-w-0 sm:flex-1 file:mr-2 file:rounded file:border-0 file:bg-notion-hover file:px-2 file:py-1 file:text-xs file:text-notion-fg"
-                />
-                <button
-                  type="button"
-                  disabled={dumpBusy}
-                  onClick={() => openImportConfirm()}
-                  className="w-full sm:w-auto px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium disabled:opacity-40 shrink-0"
-                >
-                  {dumpBusy ? 'Импорт…' : 'Импортировать'}
-                </button>
-              </div>
+              <button
+                type="button"
+                disabled={resetBusy}
+                onClick={() => setResetConfirmOpen(true)}
+                className="btn w-full shrink-0 border-rose-500/45 bg-rose-950/35 text-rose-100 hover:border-rose-400/50 hover:bg-rose-950/55 sm:w-auto disabled:opacity-40"
+              >
+                {resetBusy ? 'Удаление…' : 'Стереть все заказы'}
+              </button>
             </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-rose-500/25 bg-rose-950/15 p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <p className="text-sm text-notion-fg font-medium">Очистить заказы</p>
-              <p className="text-xs text-notion-muted mt-1 leading-relaxed">
-                Навсегда удаляет все заказы в этом аккаунте; колонки таблицы не меняются.
-              </p>
-            </div>
-            <button
-              type="button"
-              disabled={resetBusy}
-              onClick={() => setResetConfirmOpen(true)}
-              className="w-full sm:w-auto px-3 py-2 rounded-lg border border-rose-500/40 bg-rose-950/40 hover:bg-rose-900/50 text-rose-100 text-sm font-medium disabled:opacity-40 shrink-0"
-            >
-              {resetBusy ? 'Удаление…' : 'Стереть'}
-            </button>
           </div>
         </div>
       </div>
@@ -817,15 +810,15 @@ export function SettingsView({
           aria-modal="true"
           aria-labelledby="new-field-title"
         >
-          <div className="w-full max-w-md rounded-xl border border-notion-border bg-notion-surface shadow-2xl p-5">
+          <div className="card w-full max-w-md shadow-2xl">
             <div className="flex items-center justify-between gap-2 mb-4">
-              <h2 id="new-field-title" className="text-lg font-semibold text-notion-fg">
+              <h2 id="new-field-title" className="text-[17px] font-semibold tracking-tight text-[color:var(--text)]">
                 Новое свойство
               </h2>
               <button
                 type="button"
                 onClick={() => setNameModal(null)}
-                className="p-2 rounded-md text-notion-muted hover:bg-notion-hover hover:text-notion-fg"
+                className="p-2 rounded-md text-[color:var(--text-muted)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)]"
                 aria-label="Закрыть"
               >
                 <X className="w-5 h-5" />
@@ -839,35 +832,35 @@ export function SettingsView({
               className="space-y-4"
             >
               <label className="block">
-                <span className="text-xs text-notion-muted uppercase tracking-wide">Название</span>
+                <span className="text-xs text-[color:var(--text-muted)] uppercase tracking-wide">Название</span>
                 <input
                   autoFocus
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-notion-border bg-notion-bg px-3 py-2 text-sm text-notion-fg"
+                  className="input mt-1 w-full"
                   placeholder="Например: Площадка"
                 />
               </label>
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-notion-muted uppercase tracking-wide">Значок</span>
+                  <span className="text-xs text-[color:var(--text-muted)] uppercase tracking-wide">Значок</span>
                   <button
                     type="button"
                     onClick={() => setNewIconKey('')}
-                    className="text-xs text-notion-muted hover:text-notion-fg"
+                    className="text-xs text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
                     title="Сбросить (по типу)"
                   >
                     По типу
                   </button>
                 </div>
-                <div className="rounded-lg border border-notion-border/80 bg-notion-bg/60 p-2.5 flex items-center gap-2">
+                <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elev-2)] p-2.5 flex items-center gap-2">
                   {(() => {
                     const { Icon } = getFieldTypeMeta(nameModal.type, '');
                     const IconOverride = iconComponentByKey(newIconKey);
                     const PreviewIcon = IconOverride || Icon;
-                    return <PreviewIcon className="w-4 h-4 text-notion-muted/80 shrink-0" aria-hidden />;
+                    return <PreviewIcon className="w-4 h-4 text-[color:var(--text-muted)] shrink-0" aria-hidden />;
                   })()}
-                  <span className="text-sm text-notion-fg/90 truncate">
+                  <span className="text-sm text-[color:var(--text)] truncate">
                     {newName.trim() ? newName.trim() : 'Новое свойство'}
                   </span>
                 </div>
@@ -876,7 +869,7 @@ export function SettingsView({
                     value={newIconQuery}
                     onChange={(e) => setNewIconQuery(e.target.value)}
                     placeholder="Поиск значка…"
-                    className="col-span-2 w-full rounded-lg border border-notion-border/80 bg-notion-bg px-3 py-2 text-sm text-notion-fg placeholder:text-notion-muted/60 outline-none focus:ring-1 focus:ring-brand/55"
+                    className="input col-span-2 w-full"
                   />
                   {FIELD_ICON_CHOICES.filter((c) => {
                     const q = newIconQuery.trim().toLowerCase();
@@ -889,8 +882,8 @@ export function SettingsView({
                       onClick={() => setNewIconKey(c.key)}
                       className={`flex items-center justify-center px-2 py-2 rounded-lg border transition-colors aspect-square ${
                         newIconKey === c.key
-                          ? 'border-violet-500/50 bg-violet-500/10 text-notion-fg'
-                          : 'border-notion-border/80 text-notion-muted hover:bg-notion-hover hover:text-notion-fg'
+                          ? 'border-[color:var(--accent-soft-strong)] bg-[color:var(--accent-soft)] text-[color:var(--text)]'
+                          : 'border-[color:var(--border)] text-[color:var(--text-muted)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)]'
                       }`}
                       title={c.label}
                       aria-label={c.label}
@@ -904,14 +897,14 @@ export function SettingsView({
                 <button
                   type="button"
                   onClick={() => setNameModal(null)}
-                  className="px-4 py-2 rounded-lg border border-notion-border text-sm text-notion-muted hover:bg-notion-hover hover:text-notion-fg"
+                  className="btn text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
                 >
                   Отмена
                 </button>
                 <button
                   type="submit"
                   disabled={!newName.trim()}
-                  className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium disabled:opacity-40"
+                  className="btn btn-primary disabled:opacity-40"
                 >
                   Создать
                 </button>
@@ -939,12 +932,12 @@ export function SettingsView({
             role="dialog"
             aria-modal="true"
             aria-labelledby="reset-bookings-title"
-            className="relative z-[1] w-full max-w-sm rounded-xl border border-rose-500/45 bg-notion-surface shadow-2xl p-4 ring-1 ring-black/40"
+            className="relative z-[1] w-full max-w-sm card border-rose-500/40 shadow-2xl ring-1 ring-black/25"
           >
-            <h3 id="reset-bookings-title" className="text-sm font-semibold text-notion-fg">
+            <h3 id="reset-bookings-title" className="text-sm font-semibold text-[color:var(--text)]">
               Удалить все ваши заказы?
             </h3>
-            <p className="text-xs text-notion-muted mt-2 leading-relaxed">
+            <p className="text-xs text-[color:var(--text-muted)] mt-2 leading-relaxed">
               Это нельзя отменить. Колонки таблицы и настройки полей останутся — удалятся только ваши записи заказов в
               этом аккаунте.
             </p>
@@ -953,7 +946,7 @@ export function SettingsView({
                 type="button"
                 disabled={resetBusy}
                 onClick={() => setResetConfirmOpen(false)}
-                className="w-full sm:w-auto px-3 py-2 rounded-lg border border-notion-border text-sm text-notion-muted hover:bg-notion-hover hover:text-notion-fg disabled:opacity-40"
+                className="btn w-full text-[color:var(--text-muted)] hover:text-[color:var(--text)] sm:w-auto disabled:opacity-40"
               >
                 Отмена
               </button>
@@ -961,7 +954,7 @@ export function SettingsView({
                 type="button"
                 disabled={resetBusy}
                 onClick={() => void executeResetBookings()}
-                className="w-full sm:w-auto px-3 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium disabled:opacity-40"
+                className="btn w-full border-transparent bg-rose-600 text-white shadow-none hover:bg-rose-500 sm:w-auto disabled:opacity-40"
               >
                 {resetBusy ? 'Удаление…' : 'Да, удалить'}
               </button>
@@ -985,12 +978,12 @@ export function SettingsView({
             role="dialog"
             aria-modal="true"
             aria-labelledby="import-dump-title"
-            className="relative z-[1] w-full max-w-sm rounded-xl border border-emerald-500/45 bg-notion-surface shadow-2xl p-4 ring-1 ring-black/40"
+            className="relative z-[1] w-full max-w-sm card shadow-2xl ring-1 ring-black/25"
           >
-            <h3 id="import-dump-title" className="text-sm font-semibold text-notion-fg">
+            <h3 id="import-dump-title" className="text-sm font-semibold text-[color:var(--text)]">
               Заменить данные из файла?
             </h3>
-            <p className="text-xs text-notion-muted mt-2 leading-relaxed">
+            <p className="text-xs text-[color:var(--text-muted)] mt-2 leading-relaxed">
               Все текущие заказы и колонки таблицы в этом аккаунте будут удалены и заново созданы из выбранного
               JSON-файла. Отменить это действие будет нельзя.
             </p>
@@ -999,7 +992,7 @@ export function SettingsView({
                 type="button"
                 disabled={dumpBusy}
                 onClick={() => setImportConfirmOpen(false)}
-                className="w-full sm:w-auto px-3 py-2 rounded-lg border border-notion-border text-sm text-notion-muted hover:bg-notion-hover hover:text-notion-fg disabled:opacity-40"
+                className="btn w-full text-[color:var(--text-muted)] hover:text-[color:var(--text)] sm:w-auto disabled:opacity-40"
               >
                 Отмена
               </button>
@@ -1007,7 +1000,7 @@ export function SettingsView({
                 type="button"
                 disabled={dumpBusy}
                 onClick={() => void executeImportDump()}
-                className="w-full sm:w-auto px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium disabled:opacity-40"
+                className="btn btn-primary w-full sm:w-auto disabled:opacity-40"
               >
                 {dumpBusy ? 'Импорт…' : 'Да, заменить'}
               </button>
@@ -1102,8 +1095,8 @@ function FieldOptionsPanel({ field, onOptionsCommit }) {
   );
 
   return (
-    <div className="px-3 pb-4 pl-11 sm:pl-12 bg-black/20 border-t border-notion-border/40">
-      <p className="text-[11px] text-notion-muted/80 pt-3 pb-2">Варианты (цвет метки)</p>
+    <div className="px-3 pb-4 pl-11 sm:pl-12 bg-[color:var(--bg-elev-2)] border-t border-[color:var(--border)]">
+      <p className="text-[11px] text-[color:var(--text-muted)] pt-3 pb-2">Варианты (цвет метки)</p>
       <ul className="space-y-1.5">
         {items.map((it) => (
           <li
@@ -1126,7 +1119,7 @@ function FieldOptionsPanel({ field, onOptionsCommit }) {
                 e.dataTransfer.setData('text/plain', it.id);
               }}
               onDragEnd={() => {}}
-              className="p-1 rounded text-notion-muted hover:text-notion-fg cursor-grab active:cursor-grabbing shrink-0 touch-manipulation"
+              className="p-1 rounded text-[color:var(--text-muted)] hover:text-[color:var(--text)] cursor-grab active:cursor-grabbing shrink-0 touch-manipulation"
               aria-label="Перетащить вариант"
             >
               <GripVertical className="w-3.5 h-3.5" />
@@ -1141,7 +1134,7 @@ function FieldOptionsPanel({ field, onOptionsCommit }) {
               onChange={(e) =>
                 setItems((prev) => prev.map((x) => (x.id === it.id ? { ...x, label: e.target.value } : x)))
               }
-              className="flex-1 min-w-0 rounded-md border border-notion-border/80 bg-notion-bg px-2 py-1 text-sm text-notion-fg"
+              className="input flex-1 min-w-0 py-1 px-2 text-sm"
             />
             <select
               value={NOTION_COLOR_KEYS.includes(it.color) ? it.color : 'gray'}
@@ -1150,7 +1143,7 @@ function FieldOptionsPanel({ field, onOptionsCommit }) {
                   prev.map((x) => (x.id === it.id ? { ...x, color: e.target.value } : x)),
                 )
               }
-              className="rounded-md border border-notion-border/80 bg-notion-bg px-1.5 py-1 text-xs text-notion-fg max-w-[6.5rem]"
+              className="input max-w-[6.5rem] px-1.5 py-1 text-xs"
             >
               {NOTION_COLOR_KEYS.map((c) => (
                 <option key={c} value={c}>
@@ -1162,7 +1155,7 @@ function FieldOptionsPanel({ field, onOptionsCommit }) {
               type="button"
               disabled={items.length <= 1}
               onClick={() => setItems((prev) => prev.filter((x) => x.id !== it.id))}
-              className="p-1.5 rounded-md text-notion-muted hover:text-rose-300 hover:bg-rose-950/30 shrink-0 disabled:opacity-30"
+              className="p-1.5 rounded-md text-[color:var(--text-muted)] hover:text-rose-300 hover:bg-rose-950/30 shrink-0 disabled:opacity-30"
               title="Удалить вариант"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -1176,7 +1169,7 @@ function FieldOptionsPanel({ field, onOptionsCommit }) {
           onClick={() =>
             setItems((prev) => [...prev, { id: newId(), label: `Вариант ${prev.length + 1}`, color: 'gray' }])
           }
-          className="text-sm px-3 py-1.5 rounded-md border border-notion-border text-notion-muted hover:bg-notion-hover hover:text-notion-fg"
+          className="text-sm px-3 py-1.5 rounded-md border border-[color:var(--border)] text-[color:var(--text-muted)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)]"
         >
           + Вариант
         </button>
@@ -1209,13 +1202,13 @@ function EditableLabel({ initial, onCommit }) {
           setEditing(false);
         }
       }}
-      className="w-full rounded-md border border-violet-500/40 bg-notion-bg px-2 py-1 text-sm text-notion-fg font-medium"
+      className="input w-full py-1.5 px-2 text-sm font-medium border-[color:var(--accent)]/45"
     />
   ) : (
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className="text-left text-sm font-medium text-notion-fg hover:text-violet-200 w-full truncate"
+      className="text-left text-sm font-medium text-[color:var(--text)] hover:text-[color:var(--accent)] w-full truncate"
     >
       {val}
     </button>
