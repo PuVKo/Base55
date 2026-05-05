@@ -72,14 +72,10 @@ html.light input[type='time']::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
 
-/* View Transitions API — main shell + settings tab panels */
+/* View Transitions API — main shell + auth card */
 @supports (view-transition-name: none) {
   .view-transition-main {
     view-transition-name: main-content;
-  }
-
-  .view-transition-settings-panel {
-    view-transition-name: settings-panel;
   }
 
   /* Экраны входа: карточка на фоне login-shell (фон не в transition) */
@@ -156,32 +152,33 @@ html.light input[type='time']::-webkit-calendar-picker-indicator {
   }
 }
 
-/* Панели настроек: тот же язык, короче по времени */
-@keyframes vt-settings-out {
+/* Переключение вкладок внутри «Настроек»: панель мягко проявляется снизу вверх.
+ * key={settingsTab} на обёртке панели заставляет React remount-ить узел,
+ * что запускает анимацию на каждую смену вкладки без View Transitions API. */
+@keyframes settings-tab-in {
   from {
-    opacity: 1;
-    transform: scale(1);
+    opacity: 0;
+    transform: translateY(10px);
   }
   to {
-    opacity: 0;
-    transform: scale(0.992);
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@keyframes vt-settings-in {
-  from {
-    opacity: 0;
-    transform: scale(0.992);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
+.settings-tab-panel {
+  animation: settings-tab-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-tab-panel {
+    animation: none;
   }
 }
 
 /*
  * Корень документа: без crossfade, иначе при VT моргает весь UI вне именованных групп (шапка, тост и т.д.).
- * Сайдбар и топбар: без анимации — только область main-content (и settings-panel / auth-panel).
+ * Сайдбар: без анимации — анимируются main-content, app-topbar и auth-panel.
  */
 ::view-transition-old(root),
 ::view-transition-new(root) {
@@ -189,10 +186,23 @@ html.light input[type='time']::-webkit-calendar-picker-indicator {
 }
 
 ::view-transition-old(app-sidebar),
-::view-transition-new(app-sidebar),
+::view-transition-new(app-sidebar) {
+  animation: none !important;
+}
+
+/* Topbar: дефолтный UA crossfade синхронно с main-content — иначе правая часть
+   шапки (фильтры / «Новая запись» / MonthNav) исчезает рывком при уходе на «Настройки»,
+   а основной контент в это время плавно перетекает. Размер группы (высота шапки)
+   тоже мягко морфится: на «Настройках» нет жёсткого md:h-[4.25rem]. */
+::view-transition-group(app-topbar) {
+  animation-duration: 0.38s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 ::view-transition-old(app-topbar),
 ::view-transition-new(app-topbar) {
-  animation: none !important;
+  animation-duration: 0.34s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 ::view-transition-old(main-content),
@@ -222,20 +232,6 @@ html.light input[type='time']::-webkit-calendar-picker-indicator {
 
 ::view-transition-new(auth-panel) {
   animation-name: vt-main-in;
-}
-
-::view-transition-old(settings-panel),
-::view-transition-new(settings-panel) {
-  animation-duration: 0.26s;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-::view-transition-old(settings-panel) {
-  animation-name: vt-settings-out;
-}
-
-::view-transition-new(settings-panel) {
-  animation-name: vt-settings-in;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -468,7 +468,7 @@ export function SettingsView({
           </div>
         </div>
 
-        <div className="view-transition-settings-panel">
+        <div key={settingsTab} className="settings-tab-panel">
           {settingsTab === 'profile' ? (
             <ProfileAccountPanel currentUser={currentUser} flushNow={flushNow} />
           ) : (
