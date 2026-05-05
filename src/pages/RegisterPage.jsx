@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { AuthNavLink } from '@/components/AuthNavLink.jsx';
 import { PasswordInput } from '@/components/PasswordInput.jsx';
 import { apiFetch } from '@/lib/api';
 import { registerSchema } from '@/lib/validation';
@@ -61,42 +61,46 @@ export default function RegisterPage() {
 
   if (done) {
     return (
-      <div className="relative min-h-screen min-h-[100dvh] bg-notion-bg px-4">
-        <div className="flex min-h-screen min-h-[100dvh] items-center justify-center">
-        <div className="w-full max-w-sm rounded-xl border border-notion-border bg-notion-surface/90 p-6 shadow-xl text-center">
-          <h1 className="text-xl font-semibold text-notion-fg mb-2">Проверьте почту</h1>
-          <p className="text-sm text-notion-muted mb-4">
-            Мы отправили ссылку для подтверждения на <span className="text-notion-fg/90">{email}</span>.
-          </p>
-          <div className="flex items-center justify-center gap-4 mb-4">
-            <button
-              type="button"
-              disabled={resending}
-              onClick={() => void resend()}
-              className="text-sm text-violet-300 hover:text-violet-200 disabled:opacity-50 disabled:pointer-events-none"
-            >
-              {resending ? 'Отправка…' : 'Отправить письмо снова'}
-            </button>
-            <Link to="/login" className="inline-block text-sm text-notion-fg/90 hover:text-notion-fg">
-              Ко входу
-            </Link>
+      <div className="login-card">
+        <div className="login-brand">
+          <div className="brand-mark">B56</div>
+          <div>
+            <h1 className="login-title mb-0">Проверьте почту</h1>
+            <p className="login-sub">Подтвердите email, чтобы завершить регистрацию.</p>
           </div>
-          {resendMsg ? <p className="text-sm text-notion-muted mb-4">{resendMsg}</p> : null}
         </div>
+        <p className="text-sm text-emerald-400/95 mb-4 rounded-[var(--radius-sm)] border border-emerald-500/25 bg-emerald-950/40 px-3 py-2 leading-relaxed">
+          Мы отправили ссылку на <span className="text-emerald-100/95 font-medium">{email}</span>. Перейдите по ней из
+          письма — без подтверждения войти не получится.
+        </p>
+        <div className="login-links">
+          <button
+            type="button"
+            disabled={resending}
+            onClick={() => void resend()}
+            className="bg-transparent border-none p-0 cursor-pointer text-[length:inherit] font-[inherit] text-[color:var(--accent)] hover:underline disabled:opacity-50 disabled:pointer-events-none disabled:no-underline"
+          >
+            {resending ? 'Отправка…' : 'Отправить письмо снова'}
+          </button>
+          <AuthNavLink to="/login">Ко входу</AuthNavLink>
         </div>
+        {resendMsg ? <p className="text-xs text-[var(--text-muted)] text-center mt-3 leading-relaxed">{resendMsg}</p> : null}
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen min-h-[100dvh] bg-[var(--bg)] px-4">
-      <div className="flex min-h-screen min-h-[100dvh] items-center justify-center">
-      <div className="w-full max-w-sm rounded-xl border border-notion-border bg-notion-surface/90 p-6 shadow-xl">
-        <h1 className="text-xl font-semibold text-notion-fg mb-1">Регистрация</h1>
-        <p className="text-sm text-notion-muted mb-6">Создайте аккаунт Base56</p>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs text-notion-muted mb-1.5" htmlFor="reg-email">
+    <div className="login-card">
+      <div className="login-brand">
+        <div className="brand-mark">B56</div>
+        <div>
+          <h1 className="login-title mb-0">Регистрация</h1>
+          <p className="login-sub">Base56 — календарь для специалистов</p>
+        </div>
+      </div>
+      <form onSubmit={onSubmit} className="login-form">
+          <div className="field">
+            <label className="field-label" htmlFor="reg-email">
               Email
             </label>
             <input
@@ -105,26 +109,29 @@ export default function RegisterPage() {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-notion-border bg-notion-bg px-3 py-2 text-sm text-notion-fg outline-none focus:ring-1 focus:ring-brand/55"
+              className="input w-full"
               required
             />
           </div>
-          <div>
-            <label className="block text-xs text-notion-muted mb-1.5" htmlFor="reg-login">
-              Логин <span className="text-notion-muted/70">(необязательно; если пусто — как в почте до @)</span>
+          <div className="field">
+            <label className="field-label" htmlFor="reg-login">
+              Логин <span className="faint font-normal">— по желанию</span>
             </label>
+            <p className="text-[11px] leading-snug text-[var(--text-faint)] -mt-0.5">
+              Можно не заполнять — тогда для входа подойдёт имя из вашей почты (то, что до @).
+            </p>
             <input
               id="reg-login"
               type="text"
               autoComplete="username"
               value={login}
               onChange={(e) => setLogin(e.target.value)}
-              className="w-full rounded-lg border border-notion-border bg-notion-bg px-3 py-2 text-sm text-notion-fg outline-none focus:ring-1 focus:ring-brand/55"
+              className="input w-full"
             />
           </div>
-          <div>
-            <label className="block text-xs text-notion-muted mb-1.5" htmlFor="reg-password">
-              Пароль (не короче 8 символов)
+          <div className="field">
+            <label className="field-label" htmlFor="reg-password">
+              Пароль
             </label>
             <PasswordInput
               id="reg-password"
@@ -134,27 +141,25 @@ export default function RegisterPage() {
               required
               minLength={8}
             />
+            <p className="text-[11px] text-[var(--text-faint)] -mt-1">Не короче 8 символов.</p>
           </div>
-          {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+          {error ? <p className="text-sm text-rose-400">{error}</p> : null}
           {submitting ? (
-            <p className="text-xs text-notion-muted">Отправка письма на сервере — обычно несколько секунд…</p>
+            <p className="text-xs text-[var(--text-muted)]">Отправка на сервер — обычно несколько секунд…</p>
           ) : null}
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-lg bg-white text-notion-bg py-2.5 text-sm font-medium hover:bg-white/90 transition-colors disabled:opacity-60 disabled:pointer-events-none"
+            className="login-btn disabled:opacity-60 disabled:pointer-events-none disabled:hover:transform-none"
           >
             {submitting ? 'Подождите…' : 'Зарегистрироваться'}
           </button>
         </form>
-        <p className="mt-4 text-center text-sm text-notion-muted">
-          Уже есть аккаунт?{' '}
-          <Link to="/login" className="text-violet-300 hover:text-violet-200">
-            Войти
-          </Link>
-        </p>
-      </div>
-      </div>
+        <div className="login-links">
+          <span className="muted">
+            Уже есть аккаунт? <AuthNavLink to="/login">Войти</AuthNavLink>
+          </span>
+        </div>
     </div>
   );
 }

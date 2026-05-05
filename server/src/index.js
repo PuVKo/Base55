@@ -36,18 +36,21 @@ const PORT = Number(process.env.PORT) || 8080;
 /** В контейнере healthcheck идёт не на 127.0.0.1 — по умолчанию слушаем все интерфейсы. Локально: LISTEN_HOST=127.0.0.1 */
 const LISTEN_HOST = (process.env.LISTEN_HOST ?? '').trim() || '0.0.0.0';
 
-/** Локальная разработка + CORS_ORIGINS (через запятую) + APP_PUBLIC_URL (один origin). */
+/** Локальная разработка + CORS_ORIGINS + BOOKING_CORS_ORIGIN (устаревший алиас) + APP_PUBLIC_URL. */
 function resolveCorsOrigins() {
   const defaults = ['http://localhost:5174', 'http://127.0.0.1:5174'];
-  const extraList = (process.env.CORS_ORIGINS ?? '')
-    .split(',')
-    .map((s) => s.trim().replace(/\/$/, ''))
-    .filter(Boolean);
+  const splitOrigins = (/** @type {string | undefined} */ raw) =>
+    (raw ?? '')
+      .split(',')
+      .map((s) => s.trim().replace(/\/$/, ''))
+      .filter(Boolean);
+  const legacyBooking = splitOrigins(process.env.BOOKING_CORS_ORIGIN);
+  const extraList = splitOrigins(process.env.CORS_ORIGINS);
   const single = (process.env.APP_PUBLIC_URL ?? '').trim().replace(/\/$/, '');
   const fromPublic = single ? [single] : [];
   const allowLocal = (process.env.CORS_ALLOW_LOCALHOST ?? '').trim() !== '0';
   const base = allowLocal ? defaults : [];
-  const merged = [...new Set([...base, ...extraList, ...fromPublic])];
+  const merged = [...new Set([...base, ...legacyBooking, ...extraList, ...fromPublic])];
   return merged;
 }
 

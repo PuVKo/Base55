@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { AuthNavLink } from '@/components/AuthNavLink.jsx';
 import { apiFetch } from '@/lib/api';
 import { forgotPasswordSchema } from '@/lib/validation';
 import { useAuthPagesDarkTheme } from '@/theme/useAuthPagesDarkTheme.js';
@@ -7,7 +7,7 @@ import { useAuthPagesDarkTheme } from '@/theme/useAuthPagesDarkTheme.js';
 export default function ForgotPasswordPage() {
   useAuthPagesDarkTheme();
   const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
+  const [outcome, setOutcome] = useState('form');
   const [error, setError] = useState('');
 
   async function onSubmit(e) {
@@ -19,55 +19,115 @@ export default function ForgotPasswordPage() {
       return;
     }
     try {
-      await apiFetch('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify(parsed.data) });
-    } catch {
-      /* всегда показываем успех */
+      const data = await apiFetch('/api/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify(parsed.data),
+      });
+      if (!data || typeof data !== 'object') {
+        setError('Не удалось обработать ответ сервера.');
+        return;
+      }
+      if (data.ok === false) {
+        if (data.code === 'EMAIL_NOT_FOUND') {
+          setError('Аккаунт с таким email не найден. Проверьте адрес или пройдите регистрацию.');
+          return;
+        }
+        if (data.code === 'INVALID_EMAIL' || data.code === 'INVALID_BODY') {
+          setError(typeof data.error === 'string' ? data.error : 'Некорректные данные');
+          return;
+        }
+        setError('Не удалось выполнить запрос. Попробуйте позже.');
+        return;
+      }
+      if (data.result === 'verification_resent') {
+        setOutcome('verification_resent');
+        return;
+      }
+      if (data.result === 'reset_sent') {
+        setOutcome('reset_sent');
+        return;
+      }
+      setError('Не удалось выполнить запрос. Попробуйте позже.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось отправить письмо. Попробуйте позже.');
     }
-    setSent(true);
   }
 
+  const title =
+    outcome === 'reset_sent'
+      ? 'Письмо отправлено'
+      : outcome === 'verification_resent'
+        ? 'Сначала подтвердите почту'
+        : 'Сброс пароля';
+
+  const subtitle =
+    outcome === 'reset_sent'
+      ? 'Откройте письмо и перейдите по ссылке — там можно задать новый пароль.'
+      : outcome === 'verification_resent'
+        ? 'На этот адрес уже заведён аккаунт, но входящие ещё не подтверждены.'
+        : 'Укажите email аккаунта — отправим ссылку, чтобы задать новый пароль.';
+
   return (
-    <div className="relative min-h-screen min-h-[100dvh] bg-notion-bg px-4">
-      <div className="flex min-h-screen min-h-[100dvh] items-center justify-center">
-      <div className="w-full max-w-sm rounded-xl border border-notion-border bg-notion-surface/90 p-6 shadow-xl">
-        <h1 className="text-xl font-semibold text-notion-fg mb-1">Сброс пароля</h1>
-        <p className="text-sm text-notion-muted mb-6">Укажите email — пришлём ссылку, если аккаунт найден.</p>
-        {sent ? (
-          <p className="text-sm text-notion-muted mb-4">
-            Если такой email зарегистрирован, на него отправлена ссылка для сброса пароля.
-          </p>
-        ) : (
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs text-notion-muted mb-1.5" htmlFor="forgot-email">
-                Email
-              </label>
-              <input
-                id="forgot-email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-notion-border bg-notion-bg px-3 py-2 text-sm text-notion-fg outline-none focus:ring-1 focus:ring-brand/55"
-                required
-              />
+    <div className="login-card">
+        <div className="login-brand">
+          <div className="brand-mark">B56</div>
+          <div>
+            <h1 className="login-title mb-0">{title}</h1>
+            <p className="login-sub">{subtitle}</p>
+          </div>
+        </div>
+
+        {outcome === 'reset_sent' ? (
+          <>
+            <p className="text-sm text-emerald-400/95 mb-4 rounded-[var(--radius-sm)] border border-emerald-500/25 bg-emerald-950/40 px-3 py-2">
+              Ссылка для сброса пароля отправлена на вашу почту. Если письма нет во входящих, загляните в «Спам» —
+              иногда фильтры откладывают его туда.
+            </p>
+            <div className="login-links">
+              <AuthNavLink to="/login">Назад ко входу</AuthNavLink>
             </div>
-            {error ? <p className="text-sm text-rose-300">{error}</p> : null}
-            <button
-              type="submit"
-              className="w-full rounded-lg bg-white text-notion-bg py-2.5 text-sm font-medium hover:bg-white/90 transition-colors"
-            >
-              Отправить ссылку
-            </button>
-          </form>
+          </>
+        ) : outcome === 'verification_resent' ? (
+          <>
+            <p className="text-sm text-amber-200/95 mb-4 rounded-[var(--radius-sm)] border border-amber-500/30 bg-amber-950/35 px-3 py-2 leading-relaxed">
+              Вход возможен только после подтверждения email. Мы отправили письмо со ссылкой для подтверждения ещё
+              раз — откройте его и завершите регистрацию. После этого можно снова запросить сброс пароля здесь, если
+              нужно.
+            </p>
+            <p className="text-xs text-center text-[var(--text-muted)] -mt-1 mb-1 px-1 leading-relaxed">
+              Если письма нет, подождите минуту-другую и проверьте папку «Спам».
+            </p>
+            <div className="login-links">
+              <AuthNavLink to="/login">Назад ко входу</AuthNavLink>
+            </div>
+          </>
+        ) : (
+          <>
+            <form onSubmit={onSubmit} className="login-form">
+              <div className="field">
+                <label className="field-label" htmlFor="forgot-email">
+                  Email
+                </label>
+                <input
+                  id="forgot-email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input w-full"
+                  required
+                />
+              </div>
+              {error ? <p className="text-sm text-rose-400">{error}</p> : null}
+              <button type="submit" className="login-btn">
+                Отправить ссылку
+              </button>
+            </form>
+            <div className="login-links">
+              <AuthNavLink to="/login">Назад ко входу</AuthNavLink>
+            </div>
+          </>
         )}
-        <p className="mt-4 text-center text-sm text-notion-muted">
-          <Link to="/login" className="text-violet-300 hover:text-violet-200">
-            Назад ко входу
-          </Link>
-        </p>
-      </div>
-      </div>
     </div>
   );
 }

@@ -32,20 +32,27 @@ function ProfileAccountPanel({ currentUser, flushNow }) {
   const navigate = useNavigate();
   const [pwdBusy, setPwdBusy] = useState(false);
   const [pwdSent, setPwdSent] = useState(false);
+  /** @type {'reset' | 'verify'} */
+  const [pwdMailKind, setPwdMailKind] = useState('reset');
 
   async function sendPasswordResetEmail() {
     if (!currentUser?.email) return;
     setPwdBusy(true);
     try {
-      await apiFetch('/api/auth/forgot-password', {
+      const data = await apiFetch('/api/auth/forgot-password', {
         method: 'POST',
         body: JSON.stringify({ email: currentUser.email }),
       });
+      if (data && typeof data === 'object' && data.ok === false) {
+        setPwdSent(false);
+        return;
+      }
+      setPwdMailKind(data?.result === 'verification_resent' ? 'verify' : 'reset');
+      setPwdSent(true);
     } catch {
-      /* как на странице сброса — не раскрываем детали */
+      setPwdSent(false);
     } finally {
       setPwdBusy(false);
-      setPwdSent(true);
     }
   }
 
@@ -111,7 +118,9 @@ function ProfileAccountPanel({ currentUser, flushNow }) {
         </button>
         {pwdSent ? (
           <p className="text-xs text-notion-muted mt-3 leading-relaxed">
-            Если адрес совпадает с аккаунтом, проверьте входящие и папку «Спам». Ссылка действует ограниченное время.
+            {pwdMailKind === 'verify'
+              ? 'На почту отправлено письмо для подтверждения адреса. После подтверждения можно снова запросить ссылку для смены пароля.'
+              : 'Проверьте входящие и папку «Спам». Ссылка для нового пароля действует ограниченное время.'}
           </p>
         ) : null}
       </section>

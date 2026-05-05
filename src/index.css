@@ -82,6 +82,15 @@ html.light input[type='time']::-webkit-calendar-picker-indicator {
     view-transition-name: settings-panel;
   }
 
+  /* Экраны входа: карточка на фоне login-shell (фон не в transition) */
+  .view-transition-auth-panel {
+    view-transition-name: auth-panel;
+  }
+
+  ::view-transition-group(auth-panel) {
+    z-index: 1;
+  }
+
   /* Сайдбар: отдельный снимок при VT (в т.ч. смена темы), мягче чем мгновенный перекрас */
   .sidebar {
     view-transition-name: app-sidebar;
@@ -118,7 +127,8 @@ html.light input[type='time']::-webkit-calendar-picker-indicator {
   html.theme-vt-wave .view-transition-main,
   html.theme-vt-wave .sidebar,
   html.theme-vt-wave .view-transition-settings-panel,
-  html.theme-vt-wave .view-transition-mobile-nav {
+  html.theme-vt-wave .view-transition-mobile-nav,
+  html.theme-vt-wave .view-transition-auth-panel {
     view-transition-name: none !important;
   }
 }
@@ -215,6 +225,21 @@ html.light input[type='time']::-webkit-calendar-picker-indicator {
 }
 
 ::view-transition-new(main-content) {
+  animation-name: vt-main-in;
+}
+
+/* Карточка входа/регистрации: как main-content — только scale + opacity */
+::view-transition-old(auth-panel),
+::view-transition-new(auth-panel) {
+  animation-duration: 0.38s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+::view-transition-old(auth-panel) {
+  animation-name: vt-main-out;
+}
+
+::view-transition-new(auth-panel) {
   animation-name: vt-main-in;
 }
 

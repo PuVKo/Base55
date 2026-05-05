@@ -58,6 +58,32 @@ function badRequest(res, msg = 'Некорректные данные') {
   res.status(400).json({ error: msg });
 }
 
+/**
+ * Создать токен верификации и отправить письмо (пробрасывает ошибку при сбое почты).
+ * @param {import('@prisma/client').PrismaClient} prisma
+ * @param {{ id: string, email: string }} user
+ */
+async function sendVerificationEmailForUser(prisma, user) {
+  await prisma.authToken.deleteMany({
+    where: { userId: user.id, type: 'VERIFY_EMAIL' },
+  });
+  const raw = tokenBytes();
+  await prisma.authToken.create({
+    data: {
+      userId: user.id,
+      type: 'VERIFY_EMAIL',
+      tokenHash: hashToken(raw),
+      expiresAt: new Date(Date.now() + VERIFY_TTL_MS),
+    },
+  });
+  const link = `${publicAppUrl()}/verify-email?token=${encodeURIComponent(raw)}`;
+  await sendTransactionalMail({
+    kind: 'verify_email',
+    to: user.email,
+    ...verifyEmailFields(link),
+  });
+}
+
 const RegisterBody = z
   .object({
     email: z.string().trim().toLowerCase().max(200),
@@ -399,18 +425,37 @@ export function mountAuthRoutes(app, prisma, hooks) {
     try {
       const parsed = EmailOnlyBody.safeParse(req.body);
       if (!parsed.success) {
-        res.json({ ok: true });
+        res.json({ ok: false, code: 'INVALID_BODY', error: 'Некорректные данные' });
         return;
       }
       const email = normalizeEmail(parsed.data.email);
       if (!emailLooksValid(email)) {
-        res.json({ ok: true });
+        res.json({
+          ok: false,
+          code: 'INVALID_EMAIL',
+          error: 'Укажите корректный email',
+        });
         return;
       }
 
       const user = await prisma.user.findUnique({ where: { email } });
       if (!user) {
-        res.json({ ok: true });
+        res.json({ ok: false, code: 'EMAIL_NOT_FOUND' });
+        return;
+      }
+
+      if (!user.emailVerifiedAt) {
+        try {
+          await sendVerificationEmailForUser(prisma, user);
+        } catch (mailErr) {
+          console.error('[mail] forgot verify', mailErr);
+          res.status(502).json({
+            error: clientSafeMailError(mailErr),
+            code: 'MAIL_FAILED',
+          });
+          return;
+        }
+        res.json({ ok: true, result: 'verification_resent' });
         return;
       }
 
@@ -443,7 +488,7 @@ export function mountAuthRoutes(app, prisma, hooks) {
         return;
       }
 
-      res.json({ ok: true });
+      res.json({ ok: true, result: 'reset_sent' });
     } catch (e) {
       console.error(e);
       if (!res.headersSent) {
@@ -514,26 +559,8 @@ export function mountAuthRoutes(app, prisma, hooks) {
         return;
       }
 
-      await prisma.authToken.deleteMany({
-        where: { userId: user.id, type: 'VERIFY_EMAIL' },
-      });
-      const raw = tokenBytes();
-      await prisma.authToken.create({
-        data: {
-          userId: user.id,
-          type: 'VERIFY_EMAIL',
-          tokenHash: hashToken(raw),
-          expiresAt: new Date(Date.now() + VERIFY_TTL_MS),
-        },
-      });
-
-      const link = `${publicAppUrl()}/verify-email?token=${encodeURIComponent(raw)}`;
       try {
-        await sendTransactionalMail({
-          kind: 'verify_email',
-          to: user.email,
-          ...verifyEmailFields(link),
-        });
+        await sendVerificationEmailForUser(prisma, user);
       } catch (mailErr) {
         console.error('[mail] resend', mailErr);
         res.status(502).json({

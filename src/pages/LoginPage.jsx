@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { AuthNavLink } from '@/components/AuthNavLink.jsx';
 import { PasswordInput } from '@/components/PasswordInput.jsx';
 import { apiFetch } from '@/lib/api';
 import { loginFormSchema } from '@/lib/validation';
@@ -38,8 +39,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="login-shell px-4">
-      <div className="login-card">
+    <div className="login-card">
         <div className="login-brand">
           <div className="brand-mark">B56</div>
           <div>
@@ -91,12 +91,11 @@ export default function LoginPage() {
           </button>
         </form>
         <div className="login-links">
-          <Link to="/forgot-password">Забыли пароль?</Link>
+          <AuthNavLink to="/forgot-password">Забыли пароль?</AuthNavLink>
           <span className="muted">
-            Нет аккаунта? <Link to="/register">Регистрация</Link>
+            Нет аккаунта? <AuthNavLink to="/register">Регистрация</AuthNavLink>
           </span>
         </div>
-      </div>
     </div>
   );
 }
