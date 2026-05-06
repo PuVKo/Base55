@@ -642,6 +642,8 @@ export default function App({ currentUser = null }) {
               fields={fields}
               onOpenBooking={openEdit}
               dashboardPeriod={dashboardPeriod}
+              clientUi={clientUi}
+              updateClientUi={updateClientUi}
             />
           ) : null}
           {activeView === 'calendar' ? (

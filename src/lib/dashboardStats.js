@@ -85,11 +85,15 @@ function statusIdsBookedAndNegotiation(fields) {
  * От сегодня до конца текущего календарного года; только «Записан» и «Переговоры».
  * @param {ReturnType<import('@/lib/bookingUtils').normalizeBooking>[]} bookings
  * @param {any[] | undefined} fields
+ * @param {string[] | undefined} [allowedStatusIds]
  */
-export function upcomingBookingsInCalendarYear(bookings, fields) {
+export function upcomingBookingsInCalendarYear(bookings, fields, allowedStatusIds) {
   const today = startOfDay(new Date());
   const yearEnd = endOfYear(new Date());
-  const allowed = statusIdsBookedAndNegotiation(fields);
+  const allowed =
+    Array.isArray(allowedStatusIds) && allowedStatusIds.length > 0
+      ? new Set(allowedStatusIds)
+      : statusIdsBookedAndNegotiation(fields);
   return bookings
     .filter((b) => {
       const d = parseISO(b.date);

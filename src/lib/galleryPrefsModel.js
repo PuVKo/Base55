@@ -64,6 +64,12 @@ export function normalizeGalleryTileFieldVisible(raw) {
  *   tableTileFieldVisible: Record<string, boolean>,
  *   tableTileFieldsPanelOpen: boolean,
  *   dashboardPeriod: 'month' | 'year' | 'all',
+ *   dashboardStatusFocusId: string,
+ *   dashboardUpcomingVisible: {
+ *     dateMeta: boolean,
+ *   },
+ *   dashboardUpcomingFieldVisible: Record<string, boolean>,
+ *   dashboardUpcomingKpiStatusIds: string[],
  *   dashboardPeriodPanelOpen: boolean,
  *   theme: 'dark' | 'light',
  * }} ClientUiPayload
@@ -86,6 +92,12 @@ export function defaultClientUi() {
     tableTileFieldVisible: {},
     tableTileFieldsPanelOpen: false,
     dashboardPeriod: 'month',
+    dashboardStatusFocusId: 'processing',
+    dashboardUpcomingVisible: {
+      dateMeta: true,
+    },
+    dashboardUpcomingFieldVisible: {},
+    dashboardUpcomingKpiStatusIds: [],
     dashboardPeriodPanelOpen: false,
     theme: 'dark',
   };
@@ -98,6 +110,12 @@ export function normalizeClientUi(raw) {
   const gf = o.galleryFilters && typeof o.galleryFilters === 'object' ? o.galleryFilters : {};
   const cf = o.calendarFilters && typeof o.calendarFilters === 'object' ? o.calendarFilters : {};
   const tf = o.tableFilters && typeof o.tableFilters === 'object' ? o.tableFilters : {};
+  const up = o.dashboardUpcomingVisible && typeof o.dashboardUpcomingVisible === 'object'
+    ? /** @type {Record<string, unknown>} */ (o.dashboardUpcomingVisible)
+    : {};
+  const upFields = o.dashboardUpcomingFieldVisible && typeof o.dashboardUpcomingFieldVisible === 'object'
+    ? /** @type {Record<string, unknown>} */ (o.dashboardUpcomingFieldVisible)
+    : {};
   return {
     version: typeof o.version === 'number' ? o.version : 1,
     galleryFilters: normalizeGalleryFilters(/** @type {Record<string, unknown>} */ (gf)),
@@ -114,6 +132,17 @@ export function normalizeClientUi(raw) {
     tableTileFieldsPanelOpen: typeof o.tableTileFieldsPanelOpen === 'boolean' ? o.tableTileFieldsPanelOpen : false,
     dashboardPeriod:
       o.dashboardPeriod === 'year' || o.dashboardPeriod === 'all' ? o.dashboardPeriod : 'month',
+    dashboardStatusFocusId:
+      typeof o.dashboardStatusFocusId === 'string' && o.dashboardStatusFocusId.trim()
+        ? o.dashboardStatusFocusId
+        : 'processing',
+    dashboardUpcomingVisible: {
+      dateMeta: up.dateMeta !== false && up.date !== false && up.weekday !== false,
+    },
+    dashboardUpcomingFieldVisible: normalizeGalleryTileFieldVisible(upFields),
+    dashboardUpcomingKpiStatusIds: Array.isArray(o.dashboardUpcomingKpiStatusIds)
+      ? o.dashboardUpcomingKpiStatusIds.filter((x) => typeof x === 'string')
+      : [],
     dashboardPeriodPanelOpen:
       typeof o.dashboardPeriodPanelOpen === 'boolean' ? o.dashboardPeriodPanelOpen : false,
     theme: o.theme === 'light' ? 'light' : 'dark',

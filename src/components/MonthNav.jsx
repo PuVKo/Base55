@@ -47,7 +47,7 @@ export function MonthNav({ monthCursor, onPrev, onNext, onToday, variant = 'defa
           if (monthCursor.getTime() === startOfMonth(new Date()).getTime()) return;
           runViewTransition(onToday);
         }}
-        className="inline-flex h-8 max-h-8 min-h-8 shrink-0 items-center justify-center rounded-full border border-transparent bg-transparent px-3 text-sm font-medium leading-none tracking-normal text-notion-muted transition-colors hover:bg-notion-hover hover:text-notion-fg touch-manipulation"
+        className="hidden md:inline-flex h-8 max-h-8 min-h-8 shrink-0 items-center justify-center rounded-full border border-transparent bg-transparent px-3 text-sm font-medium leading-none tracking-normal text-notion-muted transition-colors hover:bg-notion-hover hover:text-notion-fg touch-manipulation"
       >
         Сегодня
       </button>

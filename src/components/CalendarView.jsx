@@ -12,19 +12,13 @@ import {
 import { ru } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import {
-  BookingSourceChip,
-  BookingStatusChip,
-  BookingTagChips,
-  mapBookingStatusToMockup,
-} from '@/components/MockupChips.jsx';
 import { FloatingSidePanel } from '@/components/FloatingSidePanel';
+import { GalleryTileBookingContent } from '@/components/GalleryTileBookingContent';
 import { TileFieldsPanel } from '@/components/TileFieldsPanel';
 import { ViewFiltersPanel } from '@/components/ViewFiltersPanel';
 import { useCoarsePointer, useIsMobile } from '@/hooks/use-mobile';
 import { filterCalendarGridBookings, isViewFiltersActive } from '@/lib/galleryFilterPrefs';
 import { defaultGalleryFilters } from '@/lib/galleryPrefsModel';
-import { formatRub } from '@/lib/format';
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
@@ -144,13 +138,6 @@ export function CalendarView({
    */
   function renderBookingButton(b, inMonth, opts) {
     const open = opts?.onOpen ?? (() => onOpenBooking(b.id));
-    const st = mapBookingStatusToMockup(b.status);
-    const dateShort = typeof b.date === 'string' ? b.date.slice(8, 10) : '';
-    const monthShort = typeof b.date === 'string' ? b.date.slice(5, 7) : '';
-    const timeTrim = typeof b.timeRange === 'string' ? b.timeRange.trim() : '';
-    const dateDot = dateShort && monthShort ? `${dateShort}.${monthShort}` : '';
-    const timeLine =
-      dateDot && timeTrim ? `${dateDot} · ${timeTrim}` : dateDot || timeTrim || null;
     return (
       <button
         key={b.id}
@@ -180,21 +167,16 @@ export function CalendarView({
           if (draggingRef.current) return;
           open();
         }}
-        className={`cal-event status-${st} text-left w-full min-w-0 font-inherit ${
+        className={`cal-event text-left w-full min-w-0 font-inherit ${
           inMonth ? '' : 'opacity-90'
         }`}
       >
-        <div className="cal-event-title">{b.title || 'Без названия'}</div>
-        {timeLine ? <div className="cal-event-time">{timeLine}</div> : null}
-        {b.description ? (
-          <div className="cal-event-desc">{b.description}</div>
-        ) : null}
-        <div className="cal-event-tags">
-          <BookingStatusChip fields={fields} status={b.status} />
-          <BookingTagChips fields={fields} tagIds={b.tagIds || []} />
-          <BookingSourceChip fields={fields} sourceId={b.sourceId} />
-        </div>
-        {b.amount > 0 ? <div className="cal-event-amount">{formatRub(b.amount)}</div> : null}
+        <GalleryTileBookingContent
+          booking={/** @type {Record<string, unknown>} */ (b)}
+          fields={fields || []}
+          galleryTileFieldVisible={tileVisible}
+          compact
+        />
       </button>
     );
   }

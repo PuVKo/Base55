@@ -9,7 +9,9 @@
  * @param {boolean} [p.embedded] в выезжающей панели — компактная оболочка
  */
 export function TileFieldsPanel({ fields, tileVisible, title, description, onToggleField, embedded = false }) {
-  const fieldsSorted = [...(fields || [])].sort((a, b) => a.sortOrder - b.sortOrder);
+  const fieldsSorted = [...(fields || [])]
+    .filter((f) => f.visible !== false)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 
   const shell = embedded
     ? 'rounded-lg border border-notion-border/60 bg-notion-surface/50 p-3 sm:p-4'

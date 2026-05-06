@@ -9,9 +9,10 @@ import { getFieldOptionItems } from '@/lib/fieldOptions';
  * @param {any[] | undefined} fields
  */
 function optionListsFromFields(fields) {
-  const statusF = fields?.find((f) => f.key === 'status' || f.type === 'status');
-  const tagsF = fields?.find((f) => f.key === 'tagIds' || f.type === 'tags');
-  const srcF = fields?.find((f) => f.key === 'sourceId' || f.type === 'source');
+  const visibleFields = (fields || []).filter((f) => f.visible !== false);
+  const statusF = visibleFields.find((f) => f.key === 'status' || f.type === 'status');
+  const tagsF = visibleFields.find((f) => f.key === 'tagIds' || f.type === 'tags');
+  const srcF = visibleFields.find((f) => f.key === 'sourceId' || f.type === 'source');
   return {
     statusItems: statusF ? getFieldOptionItems(statusF) : [],
     tagItems: tagsF ? getFieldOptionItems(tagsF) : [],

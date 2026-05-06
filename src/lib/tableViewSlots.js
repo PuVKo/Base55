@@ -41,5 +41,6 @@ export function fieldForTableSlot(slot, fields) {
 export function isTableSlotVisible(slot, fields, tableTileFieldVisible) {
   const f = fieldForTableSlot(slot, fields);
   if (!f) return true;
+  if (f.visible === false) return false;
   return tableTileFieldVisible[f.id] !== false;
 }

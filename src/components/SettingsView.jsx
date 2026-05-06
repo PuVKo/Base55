@@ -359,6 +359,25 @@ export function SettingsView({
     if (!q) return ADDABLE_FIELD_TYPES;
     return ADDABLE_FIELD_TYPES.filter((t) => t.label.toLowerCase().includes(q));
   }, [typeQuery]);
+  const visibleFieldsCount = useMemo(() => sorted.filter((f) => f.visible).length, [sorted]);
+  const customFieldsCount = useMemo(() => sorted.filter((f) => !f.system).length, [sorted]);
+  const LOCKED_REQUIRED_KEYS = useMemo(() => new Set(['title', 'date', 'timeRange', 'amount', 'status']), []);
+
+  /**
+   * Обязательные поля, которые нельзя удалять.
+   * Для title/date/timeRange/amount запрещаем редактирование имени/иконки/drag.
+   * Status остаётся редактируемым (варианты и цвета), но удалить нельзя.
+   * @param {any} f
+   */
+  function getFieldPolicy(f) {
+    const required = LOCKED_REQUIRED_KEYS.has(String(f?.key ?? ''));
+    const nameLocked = required && f.key !== 'status';
+    const iconLocked = nameLocked;
+    const dragLocked = false;
+    const deleteLocked = required;
+    const visibilityLocked = false;
+    return { required, nameLocked, iconLocked, dragLocked, deleteLocked, visibilityLocked };
+  }
 
   /**
    * @param {string} dragFieldId
@@ -397,6 +416,8 @@ export function SettingsView({
   }
 
   function toggleVisible(f) {
+    const policy = getFieldPolicy(f);
+    if (policy.visibilityLocked) return;
     setMsg('');
     patchFieldLocal(f.id, { visible: !f.visible });
   }
@@ -473,27 +494,58 @@ export function SettingsView({
             <ProfileAccountPanel currentUser={currentUser} flushNow={flushNow} />
           ) : (
             <>
-              <div className="set-section">
-                <h2>Поля заказа</h2>
-                <p className="section-desc">
-                  Перетащите строку за ручку слева, чтобы изменить порядок. По названию можно править подпись. У статуса,
-                  тегов и источника откройте «Варианты», чтобы задать список значений. Глаз скрывает поле в форме (записи
-                  не удаляются). Ниже — резервная копия и сброс заказов. Поле «Дата» удалить нельзя — без него не работает
-                  календарь.
-                </p>
-                <button type="button" onClick={() => void logout()} className="btn btn-ghost gap-2 px-3 mt-1">
-                  <LogOut className="h-4 w-4 shrink-0" />
-                  Выйти из аккаунта
-                </button>
-              </div>
+              <section className="card relative overflow-hidden">
+                <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-[color:var(--accent-soft)] blur-3xl" />
+                <div className="relative flex flex-col gap-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="card-eyebrow mb-2">Конструктор формы</p>
+                      <h2 className="m-0 text-[20px] font-semibold tracking-tight text-[color:var(--text)]">Поля заказа</h2>
+                      <p className="card-sub mt-2 max-w-[66ch]">
+                        Настройте структуру формы и карточки заказа. Меняйте порядок перетаскиванием, редактируйте названия
+                        и значки, а для статуса, тегов и источника открывайте варианты.
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => void logout()} className="btn btn-ghost gap-2 px-3 self-start">
+                      <LogOut className="h-4 w-4 shrink-0" />
+                      Выйти из аккаунта
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="kpi-pill">
+                      <span className="label">Всего полей</span>
+                      <span className="value">{sorted.length}</span>
+                    </span>
+                    <span className="kpi-pill">
+                      <span className="label">В форме</span>
+                      <span className="value">{visibleFieldsCount}</span>
+                    </span>
+                    <span className="kpi-pill">
+                      <span className="label">Пользовательские</span>
+                      <span className="value">{customFieldsCount}</span>
+                    </span>
+                    <span className="kpi-pill">
+                      <span className="label">Заказов</span>
+                      <span className="value">{bookingCount}</span>
+                    </span>
+                  </div>
+                </div>
+              </section>
 
               {msg ? (
-                <p className="text-sm text-rose-300 bg-rose-950/30 border border-rose-500/25 rounded-[var(--radius-sm)] px-3 py-2 mb-6">
+                <p className="text-sm text-rose-300 bg-rose-950/30 border border-rose-500/25 rounded-[var(--radius-sm)] px-3 py-2 mb-6 mt-6">
                   {msg}
                 </p>
               ) : null}
 
-              <ul className="settings-field-shell mb-1">
+              <section className="card mt-6 p-0 overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--border)] px-4 py-3 sm:px-5">
+                  <div className="min-w-0">
+                    <p className="card-title">Список полей</p>
+                    <p className="card-sub m-0">Нажмите на название, чтобы изменить подпись. Глаз скрывает поле в форме.</p>
+                  </div>
+                </div>
+                <ul className="settings-field-shell mb-0 border-0 rounded-none">
         {sorted.map((f) => {
           const { Icon, label: typeLabel } = getFieldTypeMeta(f.type, f.key);
           const IconOverride = iconComponentByKey(f.iconKey);
@@ -501,10 +553,11 @@ export function SettingsView({
           const hasOpts = fieldUsesOptionList(f);
           const open = expandedId === f.id;
           const iconOpen = iconPickerId === f.id;
+          const policy = getFieldPolicy(f);
           return (
-            <li key={f.id} className={!f.visible ? 'opacity-55' : ''}>
+            <li key={f.id} className={`${!f.visible ? 'opacity-55' : ''} bg-transparent`}>
               <div
-                className="flex items-start gap-1 sm:gap-2 py-2.5 pl-2 pr-2 sm:pr-3 hover:bg-[color:var(--surface-hover)]"
+                className="flex items-start gap-1 sm:gap-2 py-3 pl-2.5 pr-2.5 sm:pr-3.5 transition-colors hover:bg-[color:var(--surface-hover)]/70"
                 onDragOver={(e) => {
                   e.preventDefault();
                   e.dataTransfer.dropEffect = 'move';
@@ -517,31 +570,44 @@ export function SettingsView({
               >
                 <button
                   type="button"
-                  draggable
+                  draggable={!policy.dragLocked}
                   onDragStart={(e) => {
+                    if (policy.dragLocked) return;
                     e.dataTransfer.setData('text/plain', f.id);
                     e.dataTransfer.effectAllowed = 'move';
                   }}
                   onDragEnd={() => {}}
-                  className="p-1.5 mt-0.5 rounded text-[color:var(--text-muted)] hover:text-[color:var(--text)] hover:bg-[color:var(--surface-hover)] cursor-grab active:cursor-grabbing touch-manipulation shrink-0"
-                  aria-label="Перетащить"
+                  className={`p-1.5 mt-0.5 rounded text-[color:var(--text-muted)] hover:text-[color:var(--text)] hover:bg-[color:var(--surface-hover)] touch-manipulation shrink-0 ${
+                    policy.dragLocked ? 'cursor-not-allowed opacity-55' : 'cursor-grab active:cursor-grabbing'
+                  }`}
+                  aria-label={policy.dragLocked ? 'Позиция обязательного поля зафиксирована' : 'Перетащить'}
+                  title={policy.dragLocked ? 'Позиция обязательного поля зафиксирована' : 'Перетащить'}
                 >
                   <GripVertical className="w-4 h-4" />
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIconPickerId((cur) => (cur === f.id ? null : f.id))}
-                  className="p-1.5 mt-0.5 -ml-1 rounded-md text-[color:var(--text-faint)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)] shrink-0"
-                  title="Значок"
+                  disabled={policy.iconLocked}
+                  onClick={() => {
+                    if (policy.iconLocked) return;
+                    setIconPickerId((cur) => (cur === f.id ? null : f.id));
+                  }}
+                  className="p-1.5 mt-0.5 -ml-1 rounded-md text-[color:var(--text-faint)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)] shrink-0 border border-transparent hover:border-[color:var(--border)] disabled:opacity-40 disabled:cursor-not-allowed"
+                  title={policy.iconLocked ? 'У обязательного поля значок фиксирован' : 'Значок'}
                   aria-expanded={iconOpen}
                 >
                   <RowIcon className="w-4 h-4" aria-hidden />
                 </button>
                 <div className="flex-1 min-w-0 pt-1">
-                  <EditableLabel initial={f.label} onCommit={(t) => updateLabel(f, t)} />
+                  <EditableLabel
+                    initial={f.label}
+                    onCommit={(t) => updateLabel(f, t)}
+                    disabled={policy.nameLocked}
+                  />
                   <div className="text-[11px] text-[color:var(--text-faint)] mt-0.5 truncate">
                     {typeLabel}
                     {f.system ? ' · системное' : ''}
+                    {policy.required ? ' · обязательное' : ''}
                   </div>
                 </div>
                 <div className="flex items-center gap-0.5 shrink-0 pt-0.5">
@@ -556,15 +622,17 @@ export function SettingsView({
                       {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                     </button>
                   ) : null}
-                  <button
-                    type="button"
-                    onClick={() => toggleVisible(f)}
-                    className="p-2 rounded-md text-[color:var(--text-muted)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)]"
-                    title={f.visible ? 'Скрыть в форме' : 'Показать'}
-                  >
-                    {f.visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                  </button>
-                  {!f.system ? (
+                  {!policy.visibilityLocked ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleVisible(f)}
+                      className="p-2 rounded-md text-[color:var(--text-muted)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)]"
+                      title={f.visible ? 'Скрыть в форме' : 'Показать'}
+                    >
+                      {f.visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    </button>
+                  ) : null}
+                  {!policy.deleteLocked ? (
                     <button
                       type="button"
                       onClick={() => removeField(f)}
@@ -577,7 +645,7 @@ export function SettingsView({
                 </div>
               </div>
               {iconOpen ? (
-                <div className="px-3 pb-4 pl-11 sm:pl-12 bg-[color:var(--bg-elev-2)] border-t border-[color:var(--border)]">
+                <div className="px-3 pb-4 pl-11 sm:pl-12 bg-[color:var(--bg-elev-2)] border-y border-[color:var(--border)]">
                   <div className="flex items-center justify-between gap-2 pt-3 pb-2">
                     <p className="text-[11px] text-[color:var(--text-muted)]">Значок</p>
                     <button
@@ -644,67 +712,70 @@ export function SettingsView({
           );
         })}
       </ul>
+              <div className="relative p-4 sm:p-5 pt-3" ref={pickerRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPickerOpen((v) => !v);
+                    setTypeQuery('');
+                  }}
+                  className="add-prop-btn !mt-0 border-[color:var(--border)] text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
+                >
+                  <Plus className="w-4 h-4 shrink-0" />
+                  Добавить свойство
+                </button>
+                {pickerOpen ? (
+                  <div className="absolute left-4 right-4 top-[calc(100%-2px)] z-30 mt-1 flex max-h-80 flex-col overflow-hidden rounded-[var(--radius-md)] border border-[color:var(--border)] bg-[color:var(--bg-elev-2)] shadow-[var(--shadow-lg)]">
+                    <div className="p-2 border-b border-[color:var(--border)] flex items-center gap-2">
+                      <Search className="w-4 h-4 text-[color:var(--text-muted)] shrink-0" />
+                      <input
+                        autoFocus
+                        value={typeQuery}
+                        onChange={(e) => setTypeQuery(e.target.value)}
+                        placeholder="Поиск типа…"
+                        className="flex-1 min-w-0 bg-transparent text-sm text-[color:var(--text)] placeholder:text-[color:var(--text-faint)] outline-none"
+                      />
+                    </div>
+                    <ul className="overflow-y-auto py-1">
+                      {filteredTypes.map((t) => (
+                        <li key={t.value}>
+                          <button
+                            type="button"
+                            className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-[color:var(--text)] hover:bg-[color:var(--surface-hover)]"
+                            onClick={() => {
+                              setPickerOpen(false);
+                              setTypeQuery('');
+                              setNameModal({ type: t.value });
+                              setNewName('');
+                              setNewIconKey('');
+                              setNewIconQuery('');
+                            }}
+                          >
+                            <t.Icon className="w-4 h-4 text-[color:var(--text-muted)] shrink-0" />
+                            {t.label}
+                          </button>
+                        </li>
+                      ))}
+                      {filteredTypes.length === 0 ? (
+                        <li className="px-3 py-4 text-sm text-[color:var(--text-muted)] text-center">Ничего не найдено</li>
+                      ) : null}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+              </section>
 
-      <div className="relative mt-1" ref={pickerRef}>
-        <button
-          type="button"
-          onClick={() => {
-            setPickerOpen((v) => !v);
-            setTypeQuery('');
-          }}
-                className="add-prop-btn !mt-0 border-[color:var(--border)] text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
-        >
-          <Plus className="w-4 h-4 shrink-0" />
-          Добавить свойство
-        </button>
-        {pickerOpen ? (
-          <div className="absolute left-0 right-0 top-full z-30 mt-1 flex max-h-80 flex-col overflow-hidden rounded-[var(--radius-md)] border border-[color:var(--border)] bg-[color:var(--bg-elev-2)] shadow-[var(--shadow-lg)]">
-            <div className="p-2 border-b border-[color:var(--border)] flex items-center gap-2">
-              <Search className="w-4 h-4 text-[color:var(--text-muted)] shrink-0" />
-              <input
-                autoFocus
-                value={typeQuery}
-                onChange={(e) => setTypeQuery(e.target.value)}
-                placeholder="Поиск типа…"
-                className="flex-1 min-w-0 bg-transparent text-sm text-[color:var(--text)] placeholder:text-[color:var(--text-faint)] outline-none"
-              />
-            </div>
-            <ul className="overflow-y-auto py-1">
-              {filteredTypes.map((t) => (
-                <li key={t.value}>
-                  <button
-                    type="button"
-                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-[color:var(--text)] hover:bg-[color:var(--surface-hover)]"
-                    onClick={() => {
-                      setPickerOpen(false);
-                      setTypeQuery('');
-                      setNameModal({ type: t.value });
-                      setNewName('');
-                      setNewIconKey('');
-                      setNewIconQuery('');
-                    }}
-                  >
-                    <t.Icon className="w-4 h-4 text-[color:var(--text-muted)] shrink-0" />
-                    {t.label}
-                  </button>
-                </li>
-              ))}
-              {filteredTypes.length === 0 ? (
-                <li className="px-3 py-4 text-sm text-[color:var(--text-muted)] text-center">Ничего не найдено</li>
-              ) : null}
-            </ul>
-          </div>
-        ) : null}
-      </div>
+              <section className="mt-6">
+                <div className="set-section mb-0">
+                  <h2 className="!mb-2">Резервные копии</h2>
+                  <p className="section-desc !mb-6">
+                    Скачивайте или восстанавливайте копию: заказы, колонки таблицы и настройки галереи в этом браузере.
+                    Файл хранится у вас на устройстве - через него можно перенести данные или сохранить "на всякий
+                    случай".
+                  </p>
+                </div>
 
-      <div className="set-section mt-10 mb-0">
-        <h2 className="!mb-2">Резервные копии</h2>
-        <p className="section-desc !mb-6">
-          Скачивайте или восстанавливайте копию: заказы, колонки таблицы и настройки галереи в этом браузере. Файл
-          хранится у вас на устройстве — через него можно перенести данные или сохранить «на всякий случай».
-        </p>
-
-        <div className="flex flex-col gap-4">
+                <div className="grid gap-4 xl:grid-cols-2">
           <div className="card">
             <div className="flex gap-4">
               <div className="field-icon shrink-0">
@@ -782,7 +853,7 @@ export function SettingsView({
             </div>
           </div>
 
-          <div className="card border-rose-500/30 bg-[color:var(--bg-elev-1)]">
+          <div className="card border-rose-500/30 bg-[color:var(--bg-elev-1)] xl:col-span-2">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <p className="card-title text-rose-200/95">Очистить заказы</p>
@@ -800,8 +871,8 @@ export function SettingsView({
               </button>
             </div>
           </div>
-        </div>
-      </div>
+                </div>
+              </section>
 
       {nameModal ? (
         <div
@@ -1178,7 +1249,7 @@ function FieldOptionsPanel({ field, onOptionsCommit }) {
   );
 }
 
-function EditableLabel({ initial, onCommit }) {
+function EditableLabel({ initial, onCommit, disabled = false }) {
   const [val, setVal] = useState(initial);
   const [editing, setEditing] = useState(false);
 
@@ -1207,8 +1278,10 @@ function EditableLabel({ initial, onCommit }) {
   ) : (
     <button
       type="button"
+      disabled={disabled}
       onClick={() => setEditing(true)}
-      className="text-left text-sm font-medium text-[color:var(--text)] hover:text-[color:var(--accent)] w-full truncate"
+      className="text-left text-sm font-medium text-[color:var(--text)] hover:text-[color:var(--accent)] w-full truncate disabled:cursor-not-allowed disabled:text-[color:var(--text-muted)] disabled:hover:text-[color:var(--text-muted)]"
+      title={disabled ? 'Название этого обязательного поля нельзя менять' : undefined}
     >
       {val}
     </button>

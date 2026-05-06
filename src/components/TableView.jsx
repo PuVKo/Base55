@@ -76,12 +76,12 @@ export function TableView({ bookings, monthCursor, fields, onOpenBooking, client
   }
 
   const visibleSlots = useMemo(() => {
-    const v = TABLE_SLOT_ORDER.filter((slot) => isTableSlotVisible(slot, fields, tileVisible));
-    return v.length > 0 ? v : TABLE_SLOT_ORDER;
+    return TABLE_SLOT_ORDER.filter((slot) => isTableSlotVisible(slot, fields, tileVisible));
   }, [fields, tileVisible]);
 
   const sum = sorted.reduce((acc, b) => acc + (Number(b.amount) || 0), 0);
-  const colCount = visibleSlots.length;
+  const colCount = Math.max(visibleSlots.length, 1);
+  const showAmountInTable = visibleSlots.includes('amount');
 
   const clientSlotField = useMemo(() => fieldForTableSlot('client', fields), [fields]);
 
@@ -132,28 +132,38 @@ export function TableView({ bookings, monthCursor, fields, onOpenBooking, client
           <table className="tbl min-w-[640px]">
             <thead>
               <tr>
-                {visibleSlots.map((slot) => (
-                  <th
-                    key={slot}
-                    className={`px-2 sm:px-4 py-2 sm:py-3 font-medium ${
-                      slot === 'title'
-                        ? 'min-w-[140px] sm:min-w-[160px]'
-                        : slot === 'description'
-                          ? 'min-w-[160px] sm:min-w-[200px]'
-                          : slot === 'client'
-                            ? 'min-w-[140px] sm:min-w-[200px]'
-                            : slot === 'amount'
-                              ? 'whitespace-nowrap text-right'
-                              : 'whitespace-nowrap'
-                    }`}
-                  >
-                    {SLOT_LABELS[slot]}
-                  </th>
-                ))}
+                {visibleSlots.length > 0 ? (
+                  visibleSlots.map((slot) => (
+                    <th
+                      key={slot}
+                      className={`px-2 sm:px-4 py-2 sm:py-3 font-medium ${
+                        slot === 'title'
+                          ? 'min-w-[140px] sm:min-w-[160px]'
+                          : slot === 'description'
+                            ? 'min-w-[160px] sm:min-w-[200px]'
+                            : slot === 'client'
+                              ? 'min-w-[140px] sm:min-w-[200px]'
+                              : slot === 'amount'
+                                ? 'whitespace-nowrap text-right'
+                                : 'whitespace-nowrap'
+                      }`}
+                    >
+                      {SLOT_LABELS[slot]}
+                    </th>
+                  ))
+                ) : (
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 font-medium whitespace-nowrap">Таблица</th>
+                )}
               </tr>
             </thead>
             <tbody>
-              {sorted.length === 0 ? (
+              {visibleSlots.length === 0 ? (
+                <tr>
+                  <td colSpan={colCount} className="px-3 sm:px-4 py-10 text-center text-notion-muted">
+                    Все поля для таблицы скрыты в настройках.
+                  </td>
+                </tr>
+              ) : sorted.length === 0 ? (
                 <tr>
                   <td colSpan={Math.max(colCount, 1)} className="px-3 sm:px-4 py-10 text-center text-notion-muted">
                     {bookings.length === 0
@@ -266,7 +276,7 @@ export function TableView({ bookings, monthCursor, fields, onOpenBooking, client
                 })
               )}
             </tbody>
-            {sorted.length > 0 && colCount > 0 ? (
+            {sorted.length > 0 && showAmountInTable ? (
               <tfoot>
                 <tr className="tbl-foot">
                   <td colSpan={colCount}>
