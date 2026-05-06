@@ -81,38 +81,79 @@ const DEFAULT_OPTION_SETS = {
 };
 
 const DEFAULT_FIELDS = [
-  { key: 'title', label: 'Название', type: 'text', sortOrder: 0, system: false, visible: true, options: null },
-  { key: 'date', label: 'Дата', type: 'date', sortOrder: 1, system: true, visible: true, options: null },
-  { key: 'timeRange', label: 'Время', type: 'time', sortOrder: 2, system: false, visible: true, options: null },
-  { key: 'amount', label: 'Сумма (₽)', type: 'number', sortOrder: 3, system: false, visible: true, options: null },
-  { key: 'description', label: 'Описание', type: 'textarea', sortOrder: 4, system: false, visible: true, options: null },
-  { key: 'clientName', label: 'Клиент', type: 'client', sortOrder: 5, system: false, visible: true, options: null },
+  { key: 'title', label: 'Название', type: 'text', sortOrder: 0, system: false, visible: true, iconKey: null, options: null },
+  { key: 'date', label: 'Дата', type: 'date', sortOrder: 1, system: true, visible: true, iconKey: null, options: null },
+  { key: 'timeRange', label: 'Время', type: 'time', sortOrder: 2, system: false, visible: true, iconKey: null, options: null },
+  { key: 'amount', label: 'Сумма (₽)', type: 'number', sortOrder: 3, system: false, visible: true, iconKey: null, options: null },
+  {
+    key: 'description',
+    label: 'Описание',
+    type: 'textarea',
+    sortOrder: 4,
+    system: false,
+    visible: true,
+    iconKey: null,
+    options: null,
+  },
   {
     key: 'status',
     label: 'Статус',
     type: 'status',
-    sortOrder: 6,
+    sortOrder: 5,
     system: false,
     visible: true,
-    options: DEFAULT_OPTION_SETS.status,
+    iconKey: null,
+    options: {
+      items: [
+        { id: 'booked', label: 'Записан', color: 'blue' },
+        { id: 'processing', label: 'В процессе', color: 'pink' },
+        { id: 'done', label: 'Завершен', color: 'green' },
+        { id: '351a4a92-a199-43d6-a736-119d5f830e62', label: 'Переговоры', color: 'yellow' },
+      ],
+    },
   },
   {
     key: 'tagIds',
     label: 'Тэги',
     type: 'tags',
-    sortOrder: 7,
+    sortOrder: 6,
     system: false,
     visible: true,
-    options: DEFAULT_OPTION_SETS.tagIds,
+    iconKey: null,
+    options: {
+      items: [
+        { id: 'tg_853259e874fc', label: 'Личные дела', color: 'pink' },
+        { id: '3d13893a-6948-48ba-81d2-5df5f6aa8d38', label: 'Работа', color: 'yellow' },
+        { id: '59fad617-80e9-4965-aea3-1ff672ecc94a', label: 'Отдых', color: 'purple' },
+      ],
+    },
   },
   {
     key: 'sourceId',
     label: 'Источник',
     type: 'source',
+    sortOrder: 7,
+    system: false,
+    visible: true,
+    iconKey: null,
+    options: {
+      items: [
+        { id: 'c4dae00a-d33a-49b4-8b96-506cd37a1104', label: 'Сайт', color: 'blue' },
+        { id: '99ad866d-46fa-4301-adde-68da42af1cbb', label: 'Сарафан', color: 'green' },
+        { id: 'e5d8b197-6a19-4349-acee-5272da271249', label: 'Реклама', color: 'orange' },
+        { id: '6360cf2f-b978-4547-98ac-37221c61ab98', label: 'Партнеры', color: 'red' },
+      ],
+    },
+  },
+  {
+    key: 'clientName',
+    label: 'Клиент',
+    type: 'client',
     sortOrder: 8,
     system: false,
     visible: true,
-    options: DEFAULT_OPTION_SETS.sourceId,
+    iconKey: null,
+    options: null,
   },
   {
     key: 'comments',
@@ -121,6 +162,7 @@ const DEFAULT_FIELDS = [
     sortOrder: 9,
     system: false,
     visible: true,
+    iconKey: 'message',
     options: null,
   },
 ];
@@ -622,7 +664,7 @@ app.delete('/api/bookings/:id', requireAuth, async (req, res) => {
   }
 });
 
-/** Удаляет все заказы только текущего пользователя (определения полей не трогает). */
+/** Удаляет все заказы текущего пользователя; опционально сбрасывает поля к дефолтному шаблону. */
 app.post('/api/user/bookings/clear', requireAuth, async (req, res) => {
   try {
     const body = typeof req.body === 'object' && req.body !== null ? req.body : {};
@@ -630,8 +672,20 @@ app.post('/api/user/bookings/clear', requireAuth, async (req, res) => {
       res.status(400).json({ error: 'В теле запроса укажите { "confirm": true }' });
       return;
     }
-    const r = await prisma.booking.deleteMany({ where: { userId: req.userId } });
-    res.json({ ok: true, deleted: r.count });
+    const clearFields = body.clearFields === true || body.mode === 'bookings_and_fields';
+    const deletedBookings = await prisma.booking.deleteMany({ where: { userId: req.userId } });
+    if (!clearFields) {
+      res.json({ ok: true, deleted: deletedBookings.count, deletedFields: 0, fieldsReset: false });
+      return;
+    }
+    const deletedFields = await prisma.fieldDefinition.deleteMany({ where: { userId: req.userId } });
+    await ensureDefaultFields(req.userId);
+    res.json({
+      ok: true,
+      deleted: deletedBookings.count,
+      deletedFields: deletedFields.count,
+      fieldsReset: true,
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: clientSafeError(e) });

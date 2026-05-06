@@ -11,6 +11,7 @@ import { profileInitials } from '@/lib/userDisplay';
  * @param {() => void} props.onToggleCollapse
  * @param {import('@/lib/galleryPrefsModel').ClientUiPayload} props.clientUi
  * @param {(fn: (prev: import('@/lib/galleryPrefsModel').ClientUiPayload) => import('@/lib/galleryPrefsModel').ClientUiPayload) => void} props.updateClientUi
+ * @param {boolean} [props.allowAssistant]
  */
 export function Sidebar({
   activeView,
@@ -21,7 +22,9 @@ export function Sidebar({
   currentUser,
   clientUi,
   updateClientUi,
+  allowAssistant = true,
 }) {
+  const navViews = allowAssistant ? MAIN_VIEWS : MAIN_VIEWS.filter((v) => v.id !== 'assistant');
   return (
     <aside className="sidebar hidden md:flex min-h-0 h-full self-stretch flex-col">
       <div className="sidebar-brand">
@@ -43,7 +46,7 @@ export function Sidebar({
       </button>
 
       <nav className="nav">
-        {MAIN_VIEWS.map(({ id, label, sidebarLabel, icon: Icon }) => (
+        {navViews.map(({ id, label, sidebarLabel, icon: Icon }) => (
           <button
             key={id}
             type="button"

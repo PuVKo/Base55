@@ -59,6 +59,145 @@ body {
   min-height: 100dvh;
 }
 
+@keyframes booking-modal-overlay-in {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to { opacity: 1; backdrop-filter: blur(4px); }
+}
+
+@keyframes booking-modal-overlay-out {
+  from { opacity: 1; backdrop-filter: blur(4px); }
+  to { opacity: 0; backdrop-filter: blur(0px); }
+}
+
+@keyframes booking-modal-panel-in {
+  from { opacity: 0; transform: translateY(22px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes booking-modal-panel-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(18px) scale(0.99); }
+}
+
+.booking-modal-root {
+  animation: booking-modal-overlay-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.booking-modal-panel {
+  animation: booking-modal-panel-in 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: 50% 56%;
+  will-change: transform, opacity;
+}
+
+.booking-modal-root.is-closing {
+  pointer-events: none;
+  animation: booking-modal-overlay-out 280ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+.booking-modal-panel.is-closing {
+  animation: booking-modal-panel-out 280ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+@media (max-width: 767.98px) {
+  @keyframes booking-modal-mobile-panel-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes booking-modal-mobile-panel-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
+  .booking-modal-root {
+    animation-duration: 180ms;
+  }
+
+  .booking-modal-panel {
+    animation-name: booking-modal-mobile-panel-in;
+    animation-duration: 200ms;
+    transform: none !important;
+    transform-origin: 50% 50%;
+    will-change: opacity;
+  }
+
+  .booking-modal-panel.is-closing {
+    animation-name: booking-modal-mobile-panel-out;
+    animation-duration: 170ms;
+    transform: none !important;
+  }
+}
+
+@keyframes theme-content-shift {
+  0% {
+    opacity: 0.985;
+    transform: scale(0.996);
+    filter: saturate(0.96);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1);
+    filter: saturate(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: saturate(1);
+  }
+}
+
+@keyframes theme-overlay-fade {
+  0% { opacity: 0; }
+  22% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+html.theme-animating #root {
+  animation: theme-content-shift 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: 50% 50%;
+}
+
+html.theme-animating::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2147483647;
+  animation: theme-overlay-fade 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html.theme-animating.theme-next-light::after {
+  background:
+    radial-gradient(56% 40% at 50% 16%, rgba(251, 191, 36, 0.28) 0%, rgba(251, 191, 36, 0.1) 36%, transparent 80%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 65%);
+}
+
+html.theme-animating.theme-next-dark::after {
+  background:
+    radial-gradient(56% 40% at 50% 16%, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.08) 36%, transparent 80%),
+    linear-gradient(180deg, rgba(12, 12, 16, 0.32), rgba(12, 12, 16, 0) 68%);
+}
+
+.theme-switch-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2147483647;
+  animation: theme-overlay-fade 430ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.theme-switch-overlay.theme-switch-overlay--light {
+  background:
+    radial-gradient(58% 42% at 50% 18%, rgba(251, 191, 36, 0.36) 0%, rgba(251, 191, 36, 0.16) 34%, transparent 82%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 64%);
+}
+
+.theme-switch-overlay.theme-switch-overlay--dark {
+  background:
+    radial-gradient(58% 42% at 50% 18%, rgba(59, 130, 246, 0.26) 0%, rgba(59, 130, 246, 0.12) 34%, transparent 82%),
+    linear-gradient(180deg, rgba(10, 10, 14, 0.36), rgba(10, 10, 14, 0) 68%);
+}
+
 html.dark input[type='date']::-webkit-calendar-picker-indicator,
 html.dark input[type='time']::-webkit-calendar-picker-indicator {
   filter: invert(0.75);
@@ -171,8 +310,53 @@ html.light input[type='time']::-webkit-calendar-picker-indicator {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .booking-modal-root,
+  .booking-modal-panel,
+  .booking-modal-root.is-closing,
+  .booking-modal-panel.is-closing {
+    animation: none !important;
+  }
+
   .settings-tab-panel {
     animation: none;
+  }
+}
+
+/* Touch devices: отключаем hover-эффекты (курсор отсутствует, hover после тапа выглядит странно). */
+@media (hover: none), (pointer: coarse) {
+  [class*='hover:bg-']:hover,
+  [class*='hover:text-']:hover,
+  [class*='hover:border-']:hover,
+  [class*='hover:opacity-']:hover,
+  [class*='hover:shadow-']:hover,
+  [class*='hover:ring-']:hover {
+    background: inherit !important;
+    color: inherit !important;
+    border-color: inherit !important;
+    opacity: inherit !important;
+    box-shadow: inherit !important;
+    filter: none !important;
+    transform: none !important;
+  }
+
+  .btn:hover,
+  .btn-ghost:hover,
+  .nav-item:hover,
+  .sidebar-user:hover,
+  .icon-btn:hover,
+  .tab:hover,
+  .settings-field-row:hover,
+  .field-row:hover,
+  .proj-row:hover,
+  .dash-upcoming-row:hover,
+  .tile:hover,
+  .cal-event:hover {
+    background: inherit !important;
+    color: inherit !important;
+    border-color: inherit !important;
+    box-shadow: inherit !important;
+    transform: none !important;
+    filter: none !important;
   }
 }
 

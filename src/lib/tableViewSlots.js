@@ -44,3 +44,22 @@ export function isTableSlotVisible(slot, fields, tableTileFieldVisible) {
   if (f.visible === false) return false;
   return tableTileFieldVisible[f.id] !== false;
 }
+
+/** @param {any[]} fields */
+export function orderedTableSlotsFromFields(fields) {
+  const sorted = [...(fields || [])]
+    .filter((f) => f.visible !== false)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const slots = [];
+  for (const f of sorted) {
+    const slot = tableSlotForField(f);
+    if (!slot) continue;
+    if (!slots.includes(slot)) slots.push(slot);
+  }
+
+  if (slots.includes('date')) {
+    return ['date', ...slots.filter((slot) => slot !== 'date')];
+  }
+  return slots;
+}

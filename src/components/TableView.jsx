@@ -8,7 +8,7 @@ import { applyGalleryFilters, isGalleryPrefsActive } from '@/lib/galleryFilterPr
 import { defaultGalleryFilters } from '@/lib/galleryPrefsModel';
 import { BookingSourceChip, BookingStatusChip, BookingTagChips } from '@/components/MockupChips.jsx';
 import { formatDateDdMmYyyy, formatRub } from '@/lib/format';
-import { TABLE_SLOT_ORDER, fieldForTableSlot, isTableSlotVisible } from '@/lib/tableViewSlots';
+import { fieldForTableSlot, isTableSlotVisible, orderedTableSlotsFromFields } from '@/lib/tableViewSlots';
 
 const SLOT_LABELS = {
   date: 'Дата',
@@ -76,7 +76,7 @@ export function TableView({ bookings, monthCursor, fields, onOpenBooking, client
   }
 
   const visibleSlots = useMemo(() => {
-    return TABLE_SLOT_ORDER.filter((slot) => isTableSlotVisible(slot, fields, tileVisible));
+    return orderedTableSlotsFromFields(fields).filter((slot) => isTableSlotVisible(slot, fields, tileVisible));
   }, [fields, tileVisible]);
 
   const sum = sorted.reduce((acc, b) => acc + (Number(b.amount) || 0), 0);
@@ -97,7 +97,7 @@ export function TableView({ bookings, monthCursor, fields, onOpenBooking, client
           fields={fields}
           tileVisible={tileVisible}
           title="Столбцы таблицы"
-          description="Отметьте, какие поля показывать в строке. Порядок столбцов фиксированный."
+          description="Отметьте, какие поля показывать в строке. Порядок берётся из настроек полей (дата всегда первая)."
           onToggleField={(fieldId, on) =>
             updateClientUi((prev) => ({
               ...prev,

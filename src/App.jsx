@@ -102,6 +102,12 @@ export default function App({ currentUser = null }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSidebarCollapsed());
   const [settingsTab, setSettingsTab] = useState(/** @type {'profile' | 'fields'} */ ('fields'));
   const [toast, setToast] = useState('');
+  const assistantEnabled = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    const host = window.location.hostname;
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '::1' || host.endsWith('.local');
+    return import.meta.env.DEV && isLocalHost;
+  }, []);
   /** Именованный VT привязан к этому скроллу — снимок = видимая область; scrollTop сбрасываем внутри колбэка VT, не до него (иначе виден рывок). */
   const mainScrollRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   function scrollMainToTop() {
@@ -110,6 +116,7 @@ export default function App({ currentUser = null }) {
   }
 
   function setMainView(/** @type {string} */ view) {
+    if (view === 'assistant' && !assistantEnabled) return;
     if (view === activeView) return;
     runViewTransition(() => {
       setActiveView(view);
@@ -153,6 +160,12 @@ export default function App({ currentUser = null }) {
   const tableTileFieldsActiveHint = isGalleryTileFieldPrefsActive(clientUi.tableTileFieldVisible);
 
   const dashboardPeriod = clientUi.dashboardPeriod;
+
+  useEffect(() => {
+    if (!assistantEnabled && activeView === 'assistant') {
+      setActiveView('dashboard');
+    }
+  }, [assistantEnabled, activeView]);
 
   useEffect(() => {
     try {
@@ -323,7 +336,7 @@ export default function App({ currentUser = null }) {
     );
   }
 
-  const showMonthChrome = activeView !== 'settings' && activeView !== 'assistant';
+  const showMonthChrome = activeView !== 'settings' && (activeView !== 'assistant' || !assistantEnabled);
 
   return (
     <div className={`app ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
@@ -336,6 +349,7 @@ export default function App({ currentUser = null }) {
         currentUser={currentUser}
         clientUi={clientUi}
         updateClientUi={updateClientUi}
+        allowAssistant={assistantEnabled}
       />
       <main className="main pb-[calc(4.25rem+env(safe-area-inset-bottom))] md:pb-0 pt-[max(0px,env(safe-area-inset-top))]">
         <header
@@ -355,7 +369,7 @@ export default function App({ currentUser = null }) {
                     Поля формы записей, аккаунт и резервные копии данных.
                   </p>
                 </div>
-              ) : activeView === 'assistant' ? (
+              ) : activeView === 'assistant' && assistantEnabled ? (
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-0.5">
                   <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0">
                     <span className="crumb-label">Чат</span>
@@ -387,14 +401,18 @@ export default function App({ currentUser = null }) {
                     <Plus className="h-4 w-4 shrink-0" aria-hidden />
                     <span className="max-w-[9.5rem] truncate sm:max-w-none">Новая запись</span>
                   </button>
+                  <SettingsThemeToggle
+                    clientUi={clientUi}
+                    updateClientUi={updateClientUi}
+                    variant="toggle"
+                    className="md:hidden"
+                  />
                   <DashboardMobileOverflowMenu
                     dashboardPeriod={dashboardPeriod}
                     onChangePeriod={(next) =>
                       updateClientUi((prev) => ({ ...prev, dashboardPeriod: next }))
                     }
                     setMonthCursor={setMonthCursor}
-                    clientUi={clientUi}
-                    updateClientUi={updateClientUi}
                   />
                 </div>
               ) : activeView === 'gallery' && galleryPeriodMode === 'all' ? (
@@ -432,14 +450,14 @@ export default function App({ currentUser = null }) {
               </div>
             </div>
             <div
-              className={`flex shrink-0 items-center md:hidden min-w-[5.5rem] ${
+              className={`flex shrink-0 items-center justify-end md:hidden min-w-[2.25rem] ${
                 activeView === 'dashboard' ? 'hidden' : ''
               }`}
             >
               <SettingsThemeToggle
                 clientUi={clientUi}
                 updateClientUi={updateClientUi}
-                className="w-full min-w-[5.5rem]"
+                variant="toggle"
               />
             </div>
           </div>
@@ -684,10 +702,11 @@ export default function App({ currentUser = null }) {
               updateClientUi={updateClientUi}
             />
           ) : null}
-          {activeView === 'assistant' ? <AssistantView currentUser={currentUser} /> : null}
+          {activeView === 'assistant' && assistantEnabled ? <AssistantView currentUser={currentUser} /> : null}
           {activeView === 'settings' ? (
             <SettingsView
               fields={fields}
+              bookings={bookings}
               onFieldsChange={refreshFields}
               refreshBookings={refreshBookings}
               refreshClientUi={refreshClientUi}
@@ -719,7 +738,7 @@ export default function App({ currentUser = null }) {
         }}
         onDelete={handleDelete}
       />
-      <MobileNav activeView={activeView} onViewChange={setMainView} />
+      <MobileNav activeView={activeView} onViewChange={setMainView} allowAssistant={assistantEnabled} />
 
       {syncError ? (
         <div

@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { DndContext, PointerSensor, TouchSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   ChevronDown,
   ChevronRight,
@@ -8,6 +11,7 @@ import {
   Eye,
   EyeOff,
   GripVertical,
+  Lock,
   LogOut,
   Plus,
   Search,
@@ -22,6 +26,22 @@ import { fieldUsesOptionList, getFieldOptionItems } from '@/lib/fieldOptions';
 import { NOTION_COLOR_KEYS, notionPillClasses } from '@/lib/notionColors';
 import { newId } from '@/lib/id';
 import { FIELD_ICON_CHOICES, iconComponentByKey } from '@/lib/fieldIcons';
+
+const DRAG_IGNORE_SELECTOR = 'button, input, textarea, select, option, a, [contenteditable="true"], [data-no-dnd]';
+
+class RowPointerSensor extends PointerSensor {
+  static activators = [
+    {
+      eventName: 'onPointerDown',
+      handler: ({ nativeEvent }) => {
+        if (!nativeEvent.isPrimary || nativeEvent.button !== 0) return false;
+        const target = nativeEvent.target instanceof Element ? nativeEvent.target : null;
+        if (!target) return true;
+        return !target.closest(DRAG_IGNORE_SELECTOR);
+      },
+    },
+  ];
+}
 /**
  * @param {{
  *   currentUser: { id: string, email: string, login?: string | null, emailVerified?: boolean } | null,
@@ -140,6 +160,7 @@ function ProfileAccountPanel({ currentUser, flushNow }) {
 /**
  * @param {object} props
  * @param {any[]} props.fields
+ * @param {any[]} [props.bookings]
  * @param {() => Promise<void>} props.onFieldsChange
  * @param {() => Promise<void>} props.refreshBookings
  * @param {() => Promise<void>} [props.refreshClientUi]
@@ -155,6 +176,7 @@ function ProfileAccountPanel({ currentUser, flushNow }) {
  */
 export function SettingsView({
   fields,
+  bookings = [],
   onFieldsChange,
   refreshBookings,
   refreshClientUi,
@@ -177,6 +199,7 @@ export function SettingsView({
   const dumpImportRef = useRef(/** @type {HTMLInputElement | null} */ (null));
   const [resetBusy, setResetBusy] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [resetScope, setResetScope] = useState(/** @type {'bookings_only' | 'bookings_and_fields'} */ ('bookings_only'));
   const [importConfirmOpen, setImportConfirmOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [typeQuery, setTypeQuery] = useState('');
@@ -187,14 +210,22 @@ export function SettingsView({
   const [expandedId, setExpandedId] = useState(/** @type {string | null} */ (null));
   const [iconPickerId, setIconPickerId] = useState(/** @type {string | null} */ (null));
   const [iconQuery, setIconQuery] = useState('');
+  const [draggingFieldId, setDraggingFieldId] = useState(/** @type {string | null} */ (null));
   const pickerRef = useRef(/** @type {HTMLDivElement | null} */ (null));
 
   const sorted = useMemo(() => [...fields].sort((a, b) => a.sortOrder - b.sortOrder), [fields]);
 
   const dumpYearOptions = useMemo(() => {
-    const y = new Date().getFullYear();
-    return Array.from({ length: 32 }, (_, i) => y - i);
-  }, []);
+    const yearSet = new Set();
+    yearSet.add(String(new Date().getFullYear()));
+    for (const b of bookings) {
+      const raw = typeof b?.date === 'string' ? b.date.trim() : '';
+      const yearPart = raw.slice(0, 4);
+      if (!/^\d{4}$/.test(yearPart)) continue;
+      yearSet.add(yearPart);
+    }
+    return Array.from(yearSet).sort((a, b) => Number(b) - Number(a));
+  }, [bookings]);
 
   const DUMP_TOAST_MS = 5000;
   const DUMP_TOAST_LONG_MS = 9000;
@@ -362,6 +393,20 @@ export function SettingsView({
   const visibleFieldsCount = useMemo(() => sorted.filter((f) => f.visible).length, [sorted]);
   const customFieldsCount = useMemo(() => sorted.filter((f) => !f.system).length, [sorted]);
   const LOCKED_REQUIRED_KEYS = useMemo(() => new Set(['title', 'date', 'timeRange', 'amount', 'status']), []);
+  const sortableFieldIds = useMemo(() => sorted.map((f) => f.id), [sorted]);
+  const sensors = useSensors(
+    useSensor(RowPointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 110, tolerance: 5 } }),
+  );
+
+  useEffect(() => {
+    for (const f of fields) {
+      const isRequired = LOCKED_REQUIRED_KEYS.has(String(f?.key ?? ''));
+      if (isRequired && !f.visible) {
+        patchFieldLocal(f.id, { visible: true });
+      }
+    }
+  }, [fields, LOCKED_REQUIRED_KEYS, patchFieldLocal]);
 
   /**
    * Обязательные поля, которые нельзя удалять.
@@ -375,28 +420,32 @@ export function SettingsView({
     const iconLocked = nameLocked;
     const dragLocked = false;
     const deleteLocked = required;
-    const visibilityLocked = false;
+    const visibilityLocked = required;
     return { required, nameLocked, iconLocked, dragLocked, deleteLocked, visibilityLocked };
   }
 
-  /**
-   * @param {string} dragFieldId
-   * @param {string} targetFieldId
-   */
-  function reorderAfterDrop(dragFieldId, targetFieldId) {
-    if (!dragFieldId || dragFieldId === targetFieldId) return;
-    const from = sorted.findIndex((f) => f.id === dragFieldId);
-    if (from < 0) return;
-    const next = [...sorted];
-    const [item] = next.splice(from, 1);
-    const to2 = next.findIndex((f) => f.id === targetFieldId);
-    if (to2 < 0) return;
-    next.splice(to2, 0, item);
-    const withOrder = next.map((f, i) => ({ ...f, sortOrder: i }));
-    reorderFieldsLocal(withOrder);
+  function onFieldDragStart(event) {
+    setDraggingFieldId(String(event?.active?.id || ''));
+  }
+
+  function onFieldDragCancel() {
+    setDraggingFieldId(null);
+  }
+
+  function onFieldDragEnd(event) {
+    const activeId = String(event?.active?.id || '');
+    const overId = String(event?.over?.id || '');
+    setDraggingFieldId(null);
+    if (!activeId || !overId || activeId === overId) return;
+    const from = sorted.findIndex((f) => f.id === activeId);
+    const to = sorted.findIndex((f) => f.id === overId);
+    if (from < 0 || to < 0) return;
+    const moved = arrayMove(sorted, from, to).map((f, i) => ({ ...f, sortOrder: i }));
+    reorderFieldsLocal(moved);
   }
 
   async function executeResetBookings() {
+    const clearFields = resetScope === 'bookings_and_fields';
     setResetConfirmOpen(false);
     setResetBusy(true);
     setMsg('');
@@ -404,10 +453,18 @@ export function SettingsView({
       await flushNow();
       const data = await apiFetch('/api/user/bookings/clear', {
         method: 'POST',
-        body: JSON.stringify({ confirm: true }),
+        body: JSON.stringify({ confirm: true, clearFields, mode: resetScope }),
       });
       await refreshBookings();
-      setMsg(`Все ваши заказы удалены. Удалено записей: ${data.deleted ?? 0}.`);
+      if (clearFields) {
+        await onFieldsChange();
+        await refreshClientUi();
+      }
+      setMsg(
+        clearFields
+          ? `Заказы и настройки полей сброшены. Удалено записей: ${data.deleted ?? 0}, полей: ${data.deletedFields ?? 0}.`
+          : `Все ваши заказы удалены. Удалено записей: ${data.deleted ?? 0}.`,
+      );
     } catch (e) {
       setMsg(String(e?.message || e));
     } finally {
@@ -440,6 +497,176 @@ export function SettingsView({
     if (expandedId === f.id) setExpandedId(null);
     setMsg('');
     deleteFieldLocal(f.id);
+  }
+
+  /**
+   * @param {{ f: any }} p
+   */
+  function SortableFieldRow({ f }) {
+    const { Icon, label: typeLabel } = getFieldTypeMeta(f.type, f.key);
+    const IconOverride = iconComponentByKey(f.iconKey);
+    const RowIcon = IconOverride || Icon;
+    const hasOpts = fieldUsesOptionList(f);
+    const open = expandedId === f.id;
+    const iconOpen = iconPickerId === f.id;
+    const policy = getFieldPolicy(f);
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+      id: f.id,
+      disabled: policy.dragLocked,
+    });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+
+    return (
+      <li
+        ref={setNodeRef}
+        style={style}
+        className={`${!f.visible ? 'opacity-55' : ''} bg-transparent ${isDragging ? 'z-20' : ''}`}
+      >
+        <div
+          {...attributes}
+          {...listeners}
+          className={`flex items-start gap-1 sm:gap-2 py-3 pl-2.5 pr-2.5 sm:pr-3.5 transition-all ${
+            isDragging
+              ? 'rounded-lg bg-[color:var(--surface-hover)] shadow-[var(--shadow-md)] ring-1 ring-[color:var(--border-strong)] cursor-grabbing'
+              : 'hover:bg-[color:var(--surface-hover)]/70 cursor-grab active:cursor-grabbing'
+          }`}
+        >
+          <button
+            type="button"
+            disabled={policy.iconLocked}
+            onClick={() => {
+              if (policy.iconLocked) return;
+              setIconPickerId((cur) => (cur === f.id ? null : f.id));
+            }}
+            className="p-1.5 mt-0.5 -ml-1 rounded-md text-[color:var(--text-faint)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)] shrink-0 border border-transparent hover:border-[color:var(--border)] disabled:opacity-40 disabled:cursor-not-allowed"
+            title={policy.iconLocked ? 'У обязательного поля значок фиксирован' : 'Значок'}
+            aria-expanded={iconOpen}
+          >
+            <RowIcon className="w-4 h-4" aria-hidden />
+          </button>
+          <div className="flex-1 min-w-0 pt-1">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <EditableLabel initial={f.label} onCommit={(t) => updateLabel(f, t)} disabled={policy.nameLocked} />
+              {policy.required ? (
+                <span
+                  className="inline-flex shrink-0 text-[color:var(--text-faint)]"
+                  title={
+                    f.key === 'status'
+                      ? 'Обязательное поле: удалить нельзя, но статусы можно редактировать'
+                      : 'Обязательное поле: удалить нельзя'
+                  }
+                  aria-label={f.key === 'status' ? 'Обязательное поле со статусами' : 'Обязательное поле'}
+                >
+                  <Lock className="w-3.5 h-3.5" aria-hidden />
+                </span>
+              ) : null}
+            </div>
+            <div className="text-[11px] text-[color:var(--text-faint)] mt-0.5 truncate">
+              {typeLabel}
+              {f.system ? ' · системное' : ''}
+              {policy.required ? ' · обязательное' : ''}
+            </div>
+          </div>
+          <div className="flex items-center gap-0.5 shrink-0 pt-0.5">
+            {hasOpts ? (
+              <button
+                type="button"
+                onClick={() => setExpandedId(open ? null : f.id)}
+                className="p-2 rounded-md text-[color:var(--text-muted)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)]"
+                title="Варианты"
+                aria-expanded={open}
+              >
+                {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </button>
+            ) : null}
+            {!policy.visibilityLocked ? (
+              <button
+                type="button"
+                onClick={() => toggleVisible(f)}
+                className="p-2 rounded-md text-[color:var(--text-muted)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)]"
+                title={f.visible ? 'Скрыть в форме' : 'Показать'}
+              >
+                {f.visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              </button>
+            ) : null}
+            {!policy.deleteLocked ? (
+              <button
+                type="button"
+                onClick={() => removeField(f)}
+                className="p-2 rounded-md text-rose-300/80 hover:bg-rose-950/40"
+                title="Удалить"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            ) : null}
+          </div>
+        </div>
+        {iconOpen ? (
+          <div className="px-3 pb-4 pl-11 sm:pl-12 bg-[color:var(--bg-elev-2)] border-y border-[color:var(--border)]">
+            <div className="flex items-center justify-between gap-2 pt-3 pb-2">
+              <p className="text-[11px] text-[color:var(--text-muted)]">Значок</p>
+              <button
+                type="button"
+                onClick={() => {
+                  void updateIconKey(f, '');
+                  setIconPickerId(null);
+                  setIconQuery('');
+                }}
+                className="text-[11px] text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
+                title="По типу"
+              >
+                По типу
+              </button>
+            </div>
+            <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elev-2)] p-2.5 flex items-center gap-2 mb-3">
+              <RowIcon className="w-4 h-4 text-[color:var(--text-muted)] shrink-0" aria-hidden />
+              <span className="text-sm text-[color:var(--text)] truncate">{f.label}</span>
+            </div>
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+              <input
+                value={iconQuery}
+                onChange={(e) => setIconQuery(e.target.value)}
+                placeholder="Поиск значка…"
+                className="input col-span-4 w-full sm:col-span-6"
+              />
+              {FIELD_ICON_CHOICES.filter((c) => {
+                const q = iconQuery.trim().toLowerCase();
+                if (!q) return true;
+                return c.label.toLowerCase().includes(q) || c.key.toLowerCase().includes(q);
+              }).map((c) => {
+                const selected = typeof f.iconKey === 'string' && f.iconKey === c.key;
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => {
+                      void updateIconKey(f, c.key);
+                      setIconPickerId(null);
+                      setIconQuery('');
+                    }}
+                    className={`flex items-center justify-center px-2 py-2 rounded-lg border transition-colors aspect-square ${
+                      selected
+                        ? 'border-[color:var(--accent-soft-strong)] bg-[color:var(--accent-soft)] text-[color:var(--text)]'
+                        : 'border-[color:var(--border)] text-[color:var(--text-muted)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)]'
+                    }`}
+                    title={c.label}
+                    aria-label={c.label}
+                  >
+                    <c.Icon className="w-5 h-5" aria-hidden />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+        {open && hasOpts ? (
+          <FieldOptionsPanel field={f} onOptionsCommit={(items) => patchFieldLocal(f.id, { options: { items } })} />
+        ) : null}
+      </li>
+    );
   }
 
   function submitNewField() {
@@ -495,39 +722,22 @@ export function SettingsView({
           ) : (
             <>
               <section className="card relative overflow-hidden">
-                <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-[color:var(--accent-soft)] blur-3xl" />
+                <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[radial-gradient(circle_at_35%_35%,var(--accent-soft)_0%,transparent_68%)] opacity-75 blur-[40px]" />
+                <div className="pointer-events-none absolute right-8 top-6 h-36 w-36 rounded-full bg-[radial-gradient(circle,var(--accent-soft)_0%,transparent_72%)] opacity-45 blur-2xl" />
                 <div className="relative flex flex-col gap-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="card-eyebrow mb-2">Конструктор формы</p>
                       <h2 className="m-0 text-[20px] font-semibold tracking-tight text-[color:var(--text)]">Поля заказа</h2>
                       <p className="card-sub mt-2 max-w-[66ch]">
-                        Настройте структуру формы и карточки заказа. Меняйте порядок перетаскиванием, редактируйте названия
-                        и значки, а для статуса, тегов и источника открывайте варианты.
+                        Настройте поля под ваш процесс: расставьте удобный порядок, переименуйте пункты и выберите иконки.
+                        Изменения сразу применяются в календаре, плитках, таблице, статистике и в карточке заказа.
                       </p>
                     </div>
                     <button type="button" onClick={() => void logout()} className="btn btn-ghost gap-2 px-3 self-start">
                       <LogOut className="h-4 w-4 shrink-0" />
                       Выйти из аккаунта
                     </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="kpi-pill">
-                      <span className="label">Всего полей</span>
-                      <span className="value">{sorted.length}</span>
-                    </span>
-                    <span className="kpi-pill">
-                      <span className="label">В форме</span>
-                      <span className="value">{visibleFieldsCount}</span>
-                    </span>
-                    <span className="kpi-pill">
-                      <span className="label">Пользовательские</span>
-                      <span className="value">{customFieldsCount}</span>
-                    </span>
-                    <span className="kpi-pill">
-                      <span className="label">Заказов</span>
-                      <span className="value">{bookingCount}</span>
-                    </span>
                   </div>
                 </div>
               </section>
@@ -542,176 +752,32 @@ export function SettingsView({
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--border)] px-4 py-3 sm:px-5">
                   <div className="min-w-0">
                     <p className="card-title">Список полей</p>
-                    <p className="card-sub m-0">Нажмите на название, чтобы изменить подпись. Глаз скрывает поле в форме.</p>
+                    <p className="card-sub m-0">
+                      Перетаскивайте строки, чтобы задать порядок отображения, и нажимайте на название, чтобы переименовать
+                      поле. Ненужные поля можно скрыть из формы. Часть обязательных полей сейчас закреплена для корректной
+                      работы статистики; в будущих обновлениях планируем перейти на полную кастомизацию.
+                    </p>
                   </div>
                 </div>
-                <ul className="settings-field-shell mb-0 border-0 rounded-none">
-        {sorted.map((f) => {
-          const { Icon, label: typeLabel } = getFieldTypeMeta(f.type, f.key);
-          const IconOverride = iconComponentByKey(f.iconKey);
-          const RowIcon = IconOverride || Icon;
-          const hasOpts = fieldUsesOptionList(f);
-          const open = expandedId === f.id;
-          const iconOpen = iconPickerId === f.id;
-          const policy = getFieldPolicy(f);
-          return (
-            <li key={f.id} className={`${!f.visible ? 'opacity-55' : ''} bg-transparent`}>
-              <div
-                className="flex items-start gap-1 sm:gap-2 py-3 pl-2.5 pr-2.5 sm:pr-3.5 transition-colors hover:bg-[color:var(--surface-hover)]/70"
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = 'move';
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const dragFieldId = e.dataTransfer.getData('text/plain');
-                  reorderAfterDrop(dragFieldId, f.id);
-                }}
-              >
-                <button
-                  type="button"
-                  draggable={!policy.dragLocked}
-                  onDragStart={(e) => {
-                    if (policy.dragLocked) return;
-                    e.dataTransfer.setData('text/plain', f.id);
-                    e.dataTransfer.effectAllowed = 'move';
-                  }}
-                  onDragEnd={() => {}}
-                  className={`p-1.5 mt-0.5 rounded text-[color:var(--text-muted)] hover:text-[color:var(--text)] hover:bg-[color:var(--surface-hover)] touch-manipulation shrink-0 ${
-                    policy.dragLocked ? 'cursor-not-allowed opacity-55' : 'cursor-grab active:cursor-grabbing'
-                  }`}
-                  aria-label={policy.dragLocked ? 'Позиция обязательного поля зафиксирована' : 'Перетащить'}
-                  title={policy.dragLocked ? 'Позиция обязательного поля зафиксирована' : 'Перетащить'}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={onFieldDragStart}
+                  onDragCancel={onFieldDragCancel}
+                  onDragEnd={onFieldDragEnd}
                 >
-                  <GripVertical className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  disabled={policy.iconLocked}
-                  onClick={() => {
-                    if (policy.iconLocked) return;
-                    setIconPickerId((cur) => (cur === f.id ? null : f.id));
-                  }}
-                  className="p-1.5 mt-0.5 -ml-1 rounded-md text-[color:var(--text-faint)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)] shrink-0 border border-transparent hover:border-[color:var(--border)] disabled:opacity-40 disabled:cursor-not-allowed"
-                  title={policy.iconLocked ? 'У обязательного поля значок фиксирован' : 'Значок'}
-                  aria-expanded={iconOpen}
-                >
-                  <RowIcon className="w-4 h-4" aria-hidden />
-                </button>
-                <div className="flex-1 min-w-0 pt-1">
-                  <EditableLabel
-                    initial={f.label}
-                    onCommit={(t) => updateLabel(f, t)}
-                    disabled={policy.nameLocked}
-                  />
-                  <div className="text-[11px] text-[color:var(--text-faint)] mt-0.5 truncate">
-                    {typeLabel}
-                    {f.system ? ' · системное' : ''}
-                    {policy.required ? ' · обязательное' : ''}
-                  </div>
-                </div>
-                <div className="flex items-center gap-0.5 shrink-0 pt-0.5">
-                  {hasOpts ? (
-                    <button
-                      type="button"
-                      onClick={() => setExpandedId(open ? null : f.id)}
-                      className="p-2 rounded-md text-[color:var(--text-muted)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)]"
-                      title="Варианты"
-                      aria-expanded={open}
+                  <SortableContext items={sortableFieldIds} strategy={verticalListSortingStrategy}>
+                    <ul
+                      className={`settings-field-shell mb-0 border-0 rounded-none transition-colors ${
+                        draggingFieldId ? 'bg-[color:var(--bg-elev-2)]/45' : ''
+                      }`}
                     >
-                      {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                    </button>
-                  ) : null}
-                  {!policy.visibilityLocked ? (
-                    <button
-                      type="button"
-                      onClick={() => toggleVisible(f)}
-                      className="p-2 rounded-md text-[color:var(--text-muted)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)]"
-                      title={f.visible ? 'Скрыть в форме' : 'Показать'}
-                    >
-                      {f.visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                    </button>
-                  ) : null}
-                  {!policy.deleteLocked ? (
-                    <button
-                      type="button"
-                      onClick={() => removeField(f)}
-                      className="p-2 rounded-md text-rose-300/80 hover:bg-rose-950/40"
-                      title="Удалить"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-              {iconOpen ? (
-                <div className="px-3 pb-4 pl-11 sm:pl-12 bg-[color:var(--bg-elev-2)] border-y border-[color:var(--border)]">
-                  <div className="flex items-center justify-between gap-2 pt-3 pb-2">
-                    <p className="text-[11px] text-[color:var(--text-muted)]">Значок</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void updateIconKey(f, '');
-                        setIconPickerId(null);
-                        setIconQuery('');
-                      }}
-                      className="text-[11px] text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
-                      title="По типу"
-                    >
-                      По типу
-                    </button>
-                  </div>
-                  <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elev-2)] p-2.5 flex items-center gap-2 mb-3">
-                    <RowIcon className="w-4 h-4 text-[color:var(--text-muted)] shrink-0" aria-hidden />
-                    <span className="text-sm text-[color:var(--text)] truncate">{f.label}</span>
-                  </div>
-                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                    <input
-                      value={iconQuery}
-                      onChange={(e) => setIconQuery(e.target.value)}
-                      placeholder="Поиск значка…"
-                      className="input col-span-4 w-full sm:col-span-6"
-                    />
-                    {FIELD_ICON_CHOICES.filter((c) => {
-                      const q = iconQuery.trim().toLowerCase();
-                      if (!q) return true;
-                      return c.label.toLowerCase().includes(q) || c.key.toLowerCase().includes(q);
-                    }).map((c) => {
-                      const selected = typeof f.iconKey === 'string' && f.iconKey === c.key;
-                      return (
-                        <button
-                          key={c.key}
-                          type="button"
-                          onClick={() => {
-                            void updateIconKey(f, c.key);
-                            setIconPickerId(null);
-                            setIconQuery('');
-                          }}
-                          className={`flex items-center justify-center px-2 py-2 rounded-lg border transition-colors aspect-square ${
-                            selected
-                              ? 'border-[color:var(--accent-soft-strong)] bg-[color:var(--accent-soft)] text-[color:var(--text)]'
-                              : 'border-[color:var(--border)] text-[color:var(--text-muted)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)]'
-                          }`}
-                          title={c.label}
-                          aria-label={c.label}
-                        >
-                          <c.Icon className="w-5 h-5" aria-hidden />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
-              {open && hasOpts ? (
-                <FieldOptionsPanel
-                  field={f}
-                  onOptionsCommit={(items) => patchFieldLocal(f.id, { options: { items } })}
-                />
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
+                      {sorted.map((f) => (
+                        <SortableFieldRow key={f.id} f={f} />
+                      ))}
+                    </ul>
+                  </SortableContext>
+                </DndContext>
               <div className="relative p-4 sm:p-5 pt-3" ref={pickerRef}>
                 <button
                   type="button"
@@ -769,9 +835,8 @@ export function SettingsView({
                 <div className="set-section mb-0">
                   <h2 className="!mb-2">Резервные копии</h2>
                   <p className="section-desc !mb-6">
-                    Скачивайте или восстанавливайте копию: заказы, колонки таблицы и настройки галереи в этом браузере.
-                    Файл хранится у вас на устройстве - через него можно перенести данные или сохранить "на всякий
-                    случай".
+                    Синхронизация между устройствами уже работает автоматически. Этот файл нужен для переноса данных между
+                    аккаунтами или для резервного сохранения «на всякий случай».
                   </p>
                 </div>
 
@@ -785,8 +850,8 @@ export function SettingsView({
                 <div>
                   <p className="card-title">Экспорт</p>
                   <p className="card-sub mt-1">
-                    JSON с таблицей и заказами. «Все» — полная копия; если выбрать год — только записи с датой в этом
-                    году.
+                    Скачайте резервную копию в формате JSON. Можно выгрузить все данные сразу или только записи за
+                    выбранный год.
                   </p>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -828,8 +893,8 @@ export function SettingsView({
                 <div>
                   <p className="card-title">Импорт</p>
                   <p className="card-sub mt-1">
-                    Файл .json — скачанный здесь или на другом устройстве. После подтверждения текущие заказы и колонки
-                    заменятся данными из файла.
+                    Загрузите JSON-файл из резервной копии, чтобы восстановить данные. После подтверждения текущие
+                    заказы и настройки колонок будут заменены данными из файла.
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -853,21 +918,22 @@ export function SettingsView({
             </div>
           </div>
 
-          <div className="card border-rose-500/30 bg-[color:var(--bg-elev-1)] xl:col-span-2">
+          <div className="card border-rose-500/30 bg-[color:var(--bg-elev-1)] xl:col-span-2 settings-danger-card">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <p className="card-title text-rose-200/95">Очистить заказы</p>
                 <p className="card-sub mt-1">
-                  Навсегда удаляет все заказы в аккаунте. Колонки таблицы и поля не меняются.
+                  Выберите безопасный вариант очистки: удалить только заказы или полностью сбросить заказы вместе с
+                  настройками полей к базовому шаблону.
                 </p>
               </div>
               <button
                 type="button"
                 disabled={resetBusy}
                 onClick={() => setResetConfirmOpen(true)}
-                className="btn w-full shrink-0 border-rose-500/45 bg-rose-950/35 text-rose-100 hover:border-rose-400/50 hover:bg-rose-950/55 sm:w-auto disabled:opacity-40"
+                className="btn settings-danger-btn w-full shrink-0 border-rose-500/45 bg-rose-950/35 text-rose-100 hover:border-rose-400/50 hover:bg-rose-950/55 sm:w-auto disabled:opacity-40"
               >
-                {resetBusy ? 'Удаление…' : 'Стереть все заказы'}
+                {resetBusy ? 'Удаление…' : 'Удалить данные'}
               </button>
             </div>
           </div>
@@ -1006,12 +1072,45 @@ export function SettingsView({
             className="relative z-[1] w-full max-w-sm card border-rose-500/40 shadow-2xl ring-1 ring-black/25"
           >
             <h3 id="reset-bookings-title" className="text-sm font-semibold text-[color:var(--text)]">
-              Удалить все ваши заказы?
+              Что нужно очистить?
             </h3>
             <p className="text-xs text-[color:var(--text-muted)] mt-2 leading-relaxed">
-              Это нельзя отменить. Колонки таблицы и настройки полей останутся — удалятся только ваши записи заказов в
-              этом аккаунте.
+              Это действие нельзя отменить. Выберите вариант очистки для текущего аккаунта.
             </p>
+            <div className="mt-3 space-y-2">
+              <label className="flex items-start gap-2 rounded-md border border-[color:var(--border)] px-3 py-2 text-sm text-[color:var(--text)]">
+                <input
+                  type="radio"
+                  name="reset-scope"
+                  value="bookings_only"
+                  checked={resetScope === 'bookings_only'}
+                  onChange={() => setResetScope('bookings_only')}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="font-medium">Только заказы</span>
+                  <span className="block text-xs text-[color:var(--text-muted)] mt-0.5">
+                    Поля и их порядок останутся как есть.
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 rounded-md border border-rose-500/35 px-3 py-2 text-sm text-[color:var(--text)]">
+                <input
+                  type="radio"
+                  name="reset-scope"
+                  value="bookings_and_fields"
+                  checked={resetScope === 'bookings_and_fields'}
+                  onChange={() => setResetScope('bookings_and_fields')}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="font-medium">Заказы и настройки полей</span>
+                  <span className="block text-xs text-[color:var(--text-muted)] mt-0.5">
+                    Поля будут сброшены к базовому шаблону для новых пользователей.
+                  </span>
+                </span>
+              </label>
+            </div>
             <div className="mt-4 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
               <button
                 type="button"
@@ -1027,7 +1126,7 @@ export function SettingsView({
                 onClick={() => void executeResetBookings()}
                 className="btn w-full border-transparent bg-rose-600 text-white shadow-none hover:bg-rose-500 sm:w-auto disabled:opacity-40"
               >
-                {resetBusy ? 'Удаление…' : 'Да, удалить'}
+                {resetBusy ? 'Удаление…' : 'Подтвердить'}
               </button>
             </div>
           </div>
@@ -1117,6 +1216,15 @@ function FieldOptionsPanel({ field, onOptionsCommit }) {
   const lastCommittedRef = useRef('');
   const onCommitRef = useRef(onOptionsCommit);
   onCommitRef.current = onOptionsCommit;
+  const editingRef = useRef(false);
+
+  function commitLatestItems() {
+    const latest = itemsRef.current;
+    const j = JSON.stringify({ items: latest });
+    if (j === lastCommittedRef.current) return;
+    lastCommittedRef.current = j;
+    onCommitRef.current(latest);
+  }
 
   useEffect(() => {
     const initial = getFieldOptionItems(field);
@@ -1142,31 +1250,30 @@ function FieldOptionsPanel({ field, onOptionsCommit }) {
       skipNextRef.current = false;
       return;
     }
+    if (editingRef.current) return;
     const json = JSON.stringify({ items });
     if (json === lastCommittedRef.current) return;
     const t = setTimeout(() => {
-      const latest = itemsRef.current;
-      const j = JSON.stringify({ items: latest });
-      if (j === lastCommittedRef.current) return;
-      lastCommittedRef.current = j;
-      onCommitRef.current(latest);
+      commitLatestItems();
     }, FIELD_OPTIONS_SAVE_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [items]);
 
   useEffect(
     () => () => {
-      const latest = itemsRef.current;
-      const j = JSON.stringify({ items: latest });
-      if (j === lastCommittedRef.current) return;
-      lastCommittedRef.current = j;
-      onCommitRef.current(latest);
+      commitLatestItems();
     },
     [],
   );
 
   return (
-    <div className="px-3 pb-4 pl-11 sm:pl-12 bg-[color:var(--bg-elev-2)] border-t border-[color:var(--border)]">
+    <div
+      data-no-dnd
+      onPointerDownCapture={(e) => e.stopPropagation()}
+      onMouseDownCapture={(e) => e.stopPropagation()}
+      onTouchStartCapture={(e) => e.stopPropagation()}
+      className="px-3 pb-4 pl-11 sm:pl-12 bg-[color:var(--bg-elev-2)] border-t border-[color:var(--border)]"
+    >
       <p className="text-[11px] text-[color:var(--text-muted)] pt-3 pb-2">Варианты (цвет метки)</p>
       <ul className="space-y-1.5">
         {items.map((it) => (
@@ -1205,6 +1312,13 @@ function FieldOptionsPanel({ field, onOptionsCommit }) {
               onChange={(e) =>
                 setItems((prev) => prev.map((x) => (x.id === it.id ? { ...x, label: e.target.value } : x)))
               }
+              onFocus={() => {
+                editingRef.current = true;
+              }}
+              onBlur={() => {
+                editingRef.current = false;
+                commitLatestItems();
+              }}
               className="input flex-1 min-w-0 py-1 px-2 text-sm"
             />
             <select
@@ -1278,10 +1392,16 @@ function EditableLabel({ initial, onCommit, disabled = false }) {
   ) : (
     <button
       type="button"
-      disabled={disabled}
-      onClick={() => setEditing(true)}
-      className="text-left text-sm font-medium text-[color:var(--text)] hover:text-[color:var(--accent)] w-full truncate disabled:cursor-not-allowed disabled:text-[color:var(--text-muted)] disabled:hover:text-[color:var(--text-muted)]"
-      title={disabled ? 'Название этого обязательного поля нельзя менять' : undefined}
+      onClick={() => {
+        if (disabled) return;
+        setEditing(true);
+      }}
+      aria-disabled={disabled ? true : undefined}
+      className={`inline-flex max-w-full text-left text-sm font-medium truncate ${
+        disabled
+          ? 'cursor-default text-[color:var(--text)]'
+          : 'text-[color:var(--text)] hover:text-[color:var(--accent)]'
+      }`}
     >
       {val}
     </button>

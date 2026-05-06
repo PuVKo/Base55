@@ -564,7 +564,7 @@ export function DashboardView({
     const allowedStatusSet = new Set(upcomingKpiSelected);
     let upcomingStart = today;
     let upcomingEnd = endOfYear(new Date());
-    let upcomingKpiHint = `За ${format(new Date(), 'yyyy', { locale: ru })} год`;
+    let upcomingKpiHint = 'За текущий год';
     let upcomingListHint =
       `Лента ближайших записей до конца ${format(new Date(), 'yyyy')} года. Набор отображаемых полей настраивается через кнопку справа.`;
     if (dashboardPeriod === 'month') {
@@ -572,7 +572,7 @@ export function DashboardView({
       const periodEnd = endOfMonth(monthCursor);
       upcomingStart = periodStart > today ? periodStart : today;
       upcomingEnd = periodEnd;
-      upcomingKpiHint = `За ${format(monthCursor, 'LLLL', { locale: ru })}`;
+      upcomingKpiHint = 'За текущий месяц';
       upcomingListHint =
         `Лента ближайших записей за ${format(monthCursor, 'LLLL yyyy', { locale: ru })}. Набор отображаемых полей настраивается через кнопку справа.`;
     } else if (dashboardPeriod === 'year') {
@@ -580,7 +580,7 @@ export function DashboardView({
       const periodEnd = endOfYear(monthCursor);
       upcomingStart = periodStart > today ? periodStart : today;
       upcomingEnd = periodEnd;
-      upcomingKpiHint = `За ${format(monthCursor, 'yyyy', { locale: ru })} год`;
+      upcomingKpiHint = 'За текущий год';
       upcomingListHint =
         `Лента ближайших записей за ${format(monthCursor, 'yyyy', { locale: ru })} год. Набор отображаемых полей настраивается через кнопку справа.`;
     } else if (dashboardPeriod === 'all') {

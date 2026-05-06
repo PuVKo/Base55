@@ -17,14 +17,13 @@ const THEME_OPTIONS = [
 /** Кнопка для свёрнутого сайдбара */
 function ThemeToggleRound({ value, onChange, className }) {
   const next = value === 'dark' ? 'light' : 'dark';
-  const currentOption = THEME_OPTIONS.find((x) => x.id === value) ?? THEME_OPTIONS[0];
   const nextOption = THEME_OPTIONS.find((x) => x.id === next) ?? THEME_OPTIONS[0];
   return (
     <button
       type="button"
       onClick={(e) => onChange(next, e)}
       aria-label={`Переключить на ${nextOption.fullLabel.toLowerCase()}`}
-      title={`Сейчас: ${currentOption.fullLabel.toLowerCase()}. Нажмите — ${nextOption.fullLabel.toLowerCase()}.`}
+      title={`Переключить на ${nextOption.fullLabel.toLowerCase()}.`}
       className={cn(
         'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-notion-border/80',
         'bg-gradient-to-b from-notion-surface to-notion-hover/45 text-notion-muted',
@@ -33,7 +32,7 @@ function ThemeToggleRound({ value, onChange, className }) {
         className,
       )}
     >
-      <currentOption.Icon className="h-4 w-4" aria-hidden />
+      <nextOption.Icon className="h-4 w-4" aria-hidden />
     </button>
   );
 }
@@ -95,37 +94,14 @@ function ThemeSegmented({ value, onChange, className, compactText = false }) {
  * @param {{ value: 'dark' | 'light', onChange: (t: 'dark' | 'light', e?: import('react').MouseEvent) => void, className?: string, narrow?: boolean }} props
  */
 function ThemeSidebarToggle({ value, onChange, className, narrow = false }) {
-  const pill = <ThemeSegmented value={value} onChange={onChange} className={cn('theme-sidebar-toggle', className)} />;
-
   return (
     <div
       className={cn(
-        'theme-sidebar-toggle-root relative isolate min-w-0',
-        narrow ? 'flex h-9 min-h-9 w-full items-center justify-center' : 'w-full',
+        'theme-sidebar-toggle-root relative isolate min-w-0 flex h-9 min-h-9 w-full items-center',
+        narrow ? 'justify-center' : 'justify-start',
       )}
     >
-      <div
-        className={cn(
-          'min-w-0 transition-opacity duration-200 ease-out motion-reduce:transition-none',
-          narrow
-            ? 'pointer-events-none absolute inset-0 opacity-0'
-            : 'relative w-full opacity-100',
-        )}
-        aria-hidden={narrow ? true : undefined}
-      >
-        {pill}
-      </div>
-      <div
-        className={cn(
-          'flex items-center justify-center transition-opacity duration-200 ease-out motion-reduce:transition-none',
-          narrow
-            ? 'relative opacity-100'
-            : 'pointer-events-none absolute inset-0 opacity-0',
-        )}
-        aria-hidden={narrow ? undefined : true}
-      >
-        <ThemeToggleRound value={value} onChange={onChange} className={className} />
-      </div>
+      <ThemeToggleRound value={value} onChange={onChange} className={className} />
     </div>
   );
 }

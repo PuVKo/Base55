@@ -11,7 +11,7 @@ import {
 } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FloatingSidePanel } from '@/components/FloatingSidePanel';
 import { GalleryTileBookingContent } from '@/components/GalleryTileBookingContent';
 import { TileFieldsPanel } from '@/components/TileFieldsPanel';
@@ -77,6 +77,7 @@ export function CalendarView({
   const [dragOverIso, setDragOverIso] = useState('');
   const draggingRef = useRef(false);
   const [daySheetIso, setDaySheetIso] = useState(/** @type {string | null} */ (null));
+  const closeDaySheetTimerRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null));
 
   const bookingsByDate = useMemo(() => {
     /** @type {Map<string, typeof filteredBookings>} */
@@ -129,6 +130,13 @@ export function CalendarView({
       syncMonthIfNeeded(next);
     },
     [daySheetIso, shiftDayIso, syncMonthIfNeeded],
+  );
+
+  useEffect(
+    () => () => {
+      if (closeDaySheetTimerRef.current) clearTimeout(closeDaySheetTimerRef.current);
+    },
+    [],
   );
 
   /**
@@ -343,8 +351,12 @@ export function CalendarView({
                   <li key={b.id}>
                     {renderBookingButton(b, true, {
                       onOpen: () => {
-                        setDaySheetIso(null);
                         onOpenBooking(b.id);
+                        if (closeDaySheetTimerRef.current) clearTimeout(closeDaySheetTimerRef.current);
+                        closeDaySheetTimerRef.current = setTimeout(() => {
+                          setDaySheetIso(null);
+                          closeDaySheetTimerRef.current = null;
+                        }, 220);
                       },
                     })}
                   </li>

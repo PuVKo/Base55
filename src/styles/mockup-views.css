@@ -1066,6 +1066,51 @@ html.light main.main > div.overflow-auto.assistant-main-scroll,
 .profile-value { font-size: 14px; color: var(--text); }
 .profile-value .accent { color: var(--accent); }
 
+.settings-danger-card {
+  position: relative;
+  overflow: hidden;
+}
+.settings-danger-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(145deg, rgba(225, 29, 72, 0.03) 0%, rgba(239, 68, 68, 0.015) 52%, transparent 78%);
+}
+.settings-danger-card .card-title,
+.settings-danger-card .card-sub,
+.settings-danger-card .btn {
+  position: relative;
+  z-index: 1;
+}
+
+html.light .settings-danger-card,
+[data-theme='light'] .settings-danger-card {
+  border-color: rgba(225, 29, 72, 0.15) !important;
+  background: var(--bg-elev-1) !important;
+  box-shadow: var(--shadow-md);
+}
+html.light .settings-danger-card .card-title,
+[data-theme='light'] .settings-danger-card .card-title {
+  color: #be123c !important;
+}
+html.light .settings-danger-card .card-sub,
+[data-theme='light'] .settings-danger-card .card-sub {
+  color: var(--text-muted);
+}
+html.light .settings-danger-btn,
+[data-theme='light'] .settings-danger-btn {
+  border-color: rgba(225, 29, 72, 0.26) !important;
+  background: rgba(255, 248, 250, 0.98) !important;
+  color: #be123c !important;
+}
+html.light .settings-danger-btn:hover,
+[data-theme='light'] .settings-danger-btn:hover {
+  border-color: rgba(225, 29, 72, 0.36) !important;
+  background: rgba(255, 240, 245, 0.98) !important;
+  color: #9f1239 !important;
+}
+
 /* ============================================================
    LOGIN
    ============================================================ */

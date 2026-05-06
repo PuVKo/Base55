@@ -25,6 +25,8 @@ const moneyInputShell =
 const moneyInputInner =
   'flex-1 min-w-0 min-h-[1.25rem] bg-transparent border-0 p-0 text-notion-fg tabular-nums placeholder:text-notion-muted focus:outline-none focus:ring-0';
 
+const BOOKING_MODAL_ANIM_MS = 280;
+
 /** @param {string} s */
 function parseMoneyDigits(s) {
   const d = s.replace(/\D/g, '');
@@ -37,6 +39,18 @@ function parseMoneyDigits(s) {
 function formatThousandsInt(n) {
   if (!Number.isFinite(n) || n < 0) return '';
   return String(Math.floor(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
+
+/** @param {string} raw */
+function formatTimeRangeMask(raw) {
+  const digits = String(raw ?? '')
+    .replace(/\D/g, '')
+    .slice(0, 8);
+  if (!digits) return '';
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+  if (digits.length <= 6) return `${digits.slice(0, 2)}:${digits.slice(2, 4)}-${digits.slice(4)}`;
+  return `${digits.slice(0, 2)}:${digits.slice(2, 4)}-${digits.slice(4, 6)}:${digits.slice(6, 8)}`;
 }
 
 /**
@@ -127,6 +141,7 @@ function PropertyRow({ Icon, label, children }) {
  */
 export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDelete, canDelete, fields }) {
   const [draft, setDraft] = useState(/** @type {Record<string, unknown> | null} */ (null));
+  const [closing, setClosing] = useState(false);
   /** Черновик строки «новый комментарий» по ключу поля (если несколько полей типа comments). */
   const [commentDraftByKey, setCommentDraftByKey] = useState(/** @type {Record<string, string>} */ ({}));
   const baselineJson = useRef('');
@@ -134,12 +149,14 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
   onSaveRef.current = onSave;
   const draftRef = useRef(draft);
   draftRef.current = draft;
+  const closeTimerRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null));
 
   /** Сериализованное состояние — стабильная зависимость для автосохранения (вложенные объекты, client и т.д.). */
   const draftJson = useMemo(() => (draft ? JSON.stringify(draft) : ''), [draft]);
 
   useLayoutEffect(() => {
     if (open && booking) {
+      setClosing(false);
       const d = clone(booking);
       setDraft(d);
       baselineJson.current = JSON.stringify(d);
@@ -150,6 +167,22 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
       setCommentDraftByKey({});
     }
   }, [open, booking]);
+
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
+
+  useEffect(
+    () => () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!open || !draftJson) return;
@@ -170,15 +203,31 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
     onClose();
   }, [onFlushSync, onClose]);
 
+  function closeWithAnimation(skipFlush = false) {
+    if (closing) return;
+    const reduceMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const delay = reduceMotion ? 0 : BOOKING_MODAL_ANIM_MS;
+    setClosing(true);
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null;
+      if (skipFlush || !onFlushSync) {
+        onClose();
+        return;
+      }
+      void handleDismiss();
+    }, delay);
+  }
+
   if (!open || !booking) return null;
   if (!draft || String(draft.id) !== String(booking.id)) return null;
 
   const visibleFields = [...(fields || [])]
     .filter((f) => f.visible)
     .sort((a, b) => a.sortOrder - b.sortOrder);
-
-  const titleField = visibleFields.find((f) => f.key === 'title');
-  const listFields = visibleFields.filter((f) => f.key !== 'title');
 
   function patch(field, value) {
     setDraft((d) => ({ ...d, [field]: value, updatedAt: new Date().toISOString() }));
@@ -246,9 +295,11 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
           <input
             type="text"
             value={typeof draft[key] === 'string' ? draft[key] : ''}
-            onChange={(e) => patch(key, e.target.value)}
+            onChange={(e) => patch(key, f.type === 'time' ? formatTimeRangeMask(e.target.value) : e.target.value)}
             className={inputCls}
             placeholder={f.type === 'time' ? '12:00–13:00' : 'Пусто'}
+            inputMode={f.type === 'time' ? 'numeric' : undefined}
+            maxLength={f.type === 'time' ? 11 : undefined}
           />
         );
       case 'textarea':
@@ -518,14 +569,18 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col sm:items-center sm:justify-center sm:p-4 pt-[env(safe-area-inset-top)] sm:pt-4 bg-black/55 backdrop-blur-sm dark:bg-black/65"
+      className={`booking-modal-root fixed inset-0 z-[220] flex flex-col sm:items-center sm:justify-center sm:p-4 pt-[env(safe-area-inset-top)] sm:pt-4 bg-black/55 backdrop-blur-sm dark:bg-black/65 ${
+        closing ? 'is-closing' : ''
+      }`}
       role="dialog"
       aria-modal="true"
       aria-labelledby="booking-modal-title"
-      onClick={(e) => e.target === e.currentTarget && void handleDismiss()}
+      onClick={(e) => e.target === e.currentTarget && closeWithAnimation()}
     >
       <div
-        className="flex flex-col w-full max-w-4xl flex-1 min-h-0 sm:flex-none sm:h-auto sm:max-h-[min(90dvh,920px)] h-full overflow-hidden rounded-none sm:rounded-2xl border-0 sm:border border-notion-border bg-notion-surface shadow-2xl pb-[env(safe-area-inset-bottom)]"
+        className={`booking-modal-panel flex flex-col w-full max-w-4xl flex-1 min-h-0 sm:flex-none sm:h-auto sm:max-h-[min(90dvh,920px)] h-full overflow-hidden rounded-none sm:rounded-2xl border-0 sm:border border-notion-border bg-notion-surface shadow-2xl pb-[env(safe-area-inset-bottom)] ${
+          closing ? 'is-closing' : ''
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 p-3 sm:p-4 border-b border-notion-border shrink-0 z-10 bg-notion-surface">
@@ -539,15 +594,13 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
             <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--accent)]">
               Редактирование записи
             </p>
-            {!titleField ? (
-              <h2 id="booking-modal-title" className="text-sm sm:text-base font-semibold text-notion-fg truncate mt-0.5">
-                {titlePreview}
-              </h2>
-            ) : null}
+            <h2 id="booking-modal-title" className="text-sm sm:text-base font-semibold text-notion-fg truncate mt-0.5">
+              {titlePreview}
+            </h2>
           </div>
           <button
             type="button"
-            onClick={() => void handleDismiss()}
+            onClick={() => closeWithAnimation()}
             className="inline-flex items-center justify-center rounded-xl border border-notion-border p-2 text-notion-muted hover:bg-notion-hover hover:text-notion-fg hover:border-[color:var(--accent)]/40 shrink-0 touch-manipulation transition-colors"
             aria-label="Закрыть"
           >
@@ -556,22 +609,8 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
         </div>
 
         <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5 space-y-1 overscroll-contain">
-          {titleField ? (
-            <div className="pb-4 mb-3 rounded-xl border border-notion-border/80 bg-notion-bg/60 dark:bg-notion-bg/35 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] dark:shadow-none">
-              <input
-                id="booking-modal-title"
-                type="text"
-                value={typeof draft.title === 'string' ? draft.title : ''}
-                onChange={(e) => patch('title', e.target.value)}
-                className="w-full text-xl sm:text-2xl font-semibold bg-transparent border-0 outline-none focus:ring-0 text-notion-fg placeholder:text-notion-muted/45 px-0 selection:bg-[var(--accent-soft)]"
-                placeholder="Название"
-                aria-label="Название записи"
-              />
-            </div>
-          ) : null}
-
           <div className="rounded-xl border border-notion-border/70 bg-notion-bg/40 dark:bg-notion-bg/25 px-2.5 py-1.5 sm:px-4 sm:py-2 space-y-0">
-            {listFields.map((f) => (
+            {visibleFields.map((f) => (
               <div key={f.id}>{wrapField(f)}</div>
             ))}
           </div>
@@ -584,7 +623,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
                   if (!window.confirm('Удалить эту запись?')) return;
                   try {
                     await Promise.resolve(onDelete(booking.id));
-                    onClose();
+                    closeWithAnimation(true);
                   } catch {
                     /* toast в App */
                   }
