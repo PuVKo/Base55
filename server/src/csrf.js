@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 /** Пути без проверки CSRF (bootstrap / публичные POST). */
 const CSRF_EXEMPT_EXACT = new Set([
   '/api/health',
+  '/api/billing/yookassa/webhook',
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/forgot-password',

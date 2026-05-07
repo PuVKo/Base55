@@ -22,6 +22,8 @@ import { isRusenderConfigured, isSmtpConfigured } from './mail.js';
 import { createSessionMiddleware, requireAuth } from './session.js';
 import { clientSafeError } from './clientSafeError.js';
 import { normalizeClientUi } from './userClientUi.js';
+import { createBillingRouter } from './billingRoutes.js';
+import { startBillingScheduler } from './billingScheduler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const serverSrcDir = path.dirname(__filename);
@@ -350,6 +352,7 @@ app.use(createSessionMiddleware());
 app.use(ensureCsrfToken);
 mountAuthRoutes(app, prisma, { ensureDefaultFieldsForUser: ensureDefaultFields });
 app.use(requireCsrfUnlessExempt);
+app.use('/api/billing', createBillingRouter(prisma));
 
 const assistantLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -964,6 +967,7 @@ async function main() {
       `Base56 http://localhost:${PORT}${fs.existsSync(webDistPath) ? ' (API + статика)' : ' (только API)'}`,
     );
     void runStartupBackfills();
+    startBillingScheduler(prisma);
   });
   server.on('error', (err) => {
     console.error('[Base56] listen error', err);

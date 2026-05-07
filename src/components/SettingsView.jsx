@@ -20,6 +20,11 @@ import {
   X,
 } from 'lucide-react';
 import { apiFetch, invalidateCsrfToken } from '@/lib/api';
+import {
+  cancelSubscription as cancelSubscriptionApi,
+  createSubscriptionCheckout,
+  fetchSubscriptionStatus,
+} from '@/lib/billingApi';
 import { ADDABLE_FIELD_TYPES } from '@/lib/fieldTypeMeta';
 import { getFieldTypeMeta } from '@/lib/fieldTypeMeta';
 import { fieldUsesOptionList, getFieldOptionItems } from '@/lib/fieldOptions';
@@ -52,8 +57,79 @@ function ProfileAccountPanel({ currentUser, flushNow }) {
   const navigate = useNavigate();
   const [pwdBusy, setPwdBusy] = useState(false);
   const [pwdSent, setPwdSent] = useState(false);
+  const [billingBusy, setBillingBusy] = useState(true);
+  const [billingActionBusy, setBillingActionBusy] = useState(false);
+  const [billingError, setBillingError] = useState('');
+  const [billingConfigured, setBillingConfigured] = useState(true);
+  const [subscription, setSubscription] = useState(/** @type {any | null} */ (null));
   /** @type {'reset' | 'verify'} */
   const [pwdMailKind, setPwdMailKind] = useState('reset');
+
+  useEffect(() => {
+    let aborted = false;
+    async function loadBilling() {
+      setBillingBusy(true);
+      setBillingError('');
+      try {
+        const data = await fetchSubscriptionStatus();
+        if (aborted) return;
+        setBillingConfigured(Boolean(data?.configured));
+        setSubscription(data?.subscription ?? null);
+      } catch (e) {
+        if (aborted) return;
+        setBillingError(String(e?.message || e));
+      } finally {
+        if (!aborted) setBillingBusy(false);
+      }
+    }
+    void loadBilling();
+    return () => {
+      aborted = true;
+    };
+  }, []);
+
+  function formatBillingDate(iso) {
+    if (!iso) return '—';
+    const date = new Date(String(iso));
+    if (!Number.isFinite(date.getTime())) return '—';
+    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  function subscriptionStatusLabel(status) {
+    if (status === 'active') return 'Активна';
+    if (status === 'trialing') return 'Пробный период';
+    if (status === 'past_due') return 'Нужна оплата';
+    if (status === 'canceled') return 'Отключена';
+    if (status === 'incomplete') return 'Ожидает оплаты';
+    return 'Неактивна';
+  }
+
+  async function startCheckout() {
+    setBillingActionBusy(true);
+    setBillingError('');
+    try {
+      const data = await createSubscriptionCheckout();
+      const nextUrl = String(data?.confirmationUrl ?? '');
+      if (!nextUrl) throw new Error('ЮKassa не вернула ссылку на оплату');
+      window.location.assign(nextUrl);
+    } catch (e) {
+      setBillingError(String(e?.message || e));
+      setBillingActionBusy(false);
+    }
+  }
+
+  async function cancelSubscription() {
+    setBillingActionBusy(true);
+    setBillingError('');
+    try {
+      const data = await cancelSubscriptionApi();
+      setSubscription(data?.subscription ?? null);
+    } catch (e) {
+      setBillingError(String(e?.message || e));
+    } finally {
+      setBillingActionBusy(false);
+    }
+  }
 
   async function sendPasswordResetEmail() {
     if (!currentUser?.email) return;
@@ -98,9 +174,50 @@ function ProfileAccountPanel({ currentUser, flushNow }) {
           <CreditCard className="h-5 w-5 shrink-0 text-[color:var(--accent)] mt-0.5" aria-hidden />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-[color:var(--text)]">Оплаты и подписка</p>
-            <p className="text-xs text-[color:var(--text-muted)] mt-1.5 leading-relaxed">
-              Скоро здесь появятся тарифы, счета и история платежей.
-            </p>
+            <p className="text-xs text-[color:var(--text-muted)] mt-1.5 leading-relaxed">Тариф: 400 ₽/месяц.</p>
+            {billingBusy ? (
+              <p className="text-xs text-[color:var(--text-muted)] mt-2">Проверяем статус подписки…</p>
+            ) : null}
+            {!billingBusy && billingConfigured ? (
+              <div className="mt-2.5 space-y-2">
+                <p className="text-xs text-[color:var(--text-muted)]">
+                  Статус: <span className="text-[color:var(--text)]">{subscriptionStatusLabel(subscription?.status)}</span>
+                </p>
+                <p className="text-xs text-[color:var(--text-muted)]">
+                  Следующее списание:{' '}
+                  <span className="text-[color:var(--text)]">{formatBillingDate(subscription?.nextBillingAt)}</span>
+                </p>
+                {subscription?.cancelAtPeriodEnd ? (
+                  <p className="text-xs text-amber-300/90">Автопродление отключено. Подписка завершится в конце периода.</p>
+                ) : null}
+              </div>
+            ) : null}
+            {!billingBusy && !billingConfigured ? (
+              <p className="text-xs text-amber-300/90 mt-2">
+                На сервере не настроены ключи ЮKassa. Добавьте `YOOKASSA_SHOP_ID` и `YOOKASSA_SECRET_KEY`.
+              </p>
+            ) : null}
+            {billingError ? <p className="text-xs text-rose-300 mt-2">{billingError}</p> : null}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={billingBusy || billingActionBusy || !billingConfigured}
+                onClick={() => void startCheckout()}
+                className="btn btn-primary disabled:opacity-40"
+              >
+                {billingActionBusy ? 'Переход…' : subscription?.status === 'active' ? 'Продлить сейчас' : 'Оформить подписку'}
+              </button>
+              {subscription?.status === 'active' && !subscription?.cancelAtPeriodEnd ? (
+                <button
+                  type="button"
+                  disabled={billingActionBusy}
+                  onClick={() => void cancelSubscription()}
+                  className="btn btn-ghost disabled:opacity-40"
+                >
+                  Отключить автопродление
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>

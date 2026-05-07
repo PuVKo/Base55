@@ -340,6 +340,8 @@ input, textarea { font-family: inherit; }
   border-top: 1px solid var(--border);
   padding-top: 10px;
   display: flex; flex-direction: column; gap: 6px;
+  min-height: 109px;
+  box-sizing: border-box;
 }
 .sidebar-user {
   display: flex;
@@ -483,9 +485,9 @@ html.light .user-avatar {
   justify-content: center;
   align-items: center;
   gap: 0;
-  /* Совпадает по высоте со слотом темы — центры кругов 30px на одной вертикали */
-  min-height: 36px;
-  padding: 3px 0;
+  /* Высота совпадает с развернутым состоянием, чтобы футер не «прыгал» при анимации сайдбара. */
+  min-height: 56px;
+  padding: 8px 0;
 }
 
 

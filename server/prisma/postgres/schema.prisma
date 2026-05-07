@@ -12,6 +12,23 @@ enum AuthTokenType {
   RESET_PASSWORD
 }
 
+enum SubscriptionStatus {
+  trialing
+  active
+  past_due
+  canceled
+  incomplete
+}
+
+enum BillingEventType {
+  checkout_created
+  payment_succeeded
+  payment_canceled
+  recurring_charge
+  recurring_failed
+  subscription_canceled
+}
+
 model User {
   id               String    @id @default(cuid())
   email            String    @unique
@@ -26,6 +43,8 @@ model User {
   bookings         Booking[]
   fieldDefinitions FieldDefinition[]
   authTokens       AuthToken[]
+  subscriptions    Subscription[]
+  billingEvents    BillingEvent[]
 }
 
 model AuthToken {
@@ -67,4 +86,51 @@ model FieldDefinition {
 
   @@unique([userId, key])
   @@index([userId])
+}
+
+model Subscription {
+  id                 String             @id @default(cuid())
+  userId             String
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planCode           String
+  amountMinor        Int
+  currency           String             @default("RUB")
+  billingInterval    String             @default("month")
+  status             SubscriptionStatus @default(incomplete)
+  paymentMethodId    String?
+  yookassaCustomerId String?
+  lastPaymentId      String?
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  nextBillingAt      DateTime?
+  cancelAtPeriodEnd  Boolean            @default(false)
+  canceledAt         DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  billingEvents      BillingEvent[]
+
+  @@index([userId, status])
+  @@index([nextBillingAt, status])
+}
+
+model BillingEvent {
+  id             String           @id @default(cuid())
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptionId String?
+  subscription   Subscription?    @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  type           BillingEventType
+  status         String?
+  yookassaEventId String?
+  yookassaPaymentId String?
+  idempotencyKey String?
+  payload        Json?
+  processedAt    DateTime?
+  createdAt      DateTime         @default(now())
+
+  @@unique([yookassaEventId])
+  @@unique([idempotencyKey])
+  @@index([userId, type])
+  @@index([subscriptionId, createdAt])
+  @@index([yookassaPaymentId])
 }
