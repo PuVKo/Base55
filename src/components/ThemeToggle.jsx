@@ -94,6 +94,10 @@ function ThemeSegmented({ value, onChange, className, compactText = false }) {
  * @param {{ value: 'dark' | 'light', onChange: (t: 'dark' | 'light', e?: import('react').MouseEvent) => void, className?: string, narrow?: boolean }} props
  */
 function ThemeSidebarToggle({ value, onChange, className, narrow = false }) {
+  const desktopToggle = (
+    <ThemeSegmented value={value} onChange={onChange} className={cn('theme-sidebar-toggle w-full', className)} />
+  );
+  const compactToggle = <ThemeToggleRound value={value} onChange={onChange} className={className} />;
   return (
     <div
       className={cn(
@@ -101,7 +105,7 @@ function ThemeSidebarToggle({ value, onChange, className, narrow = false }) {
         narrow ? 'justify-center' : 'justify-start',
       )}
     >
-      <ThemeToggleRound value={value} onChange={onChange} className={className} />
+      {narrow ? compactToggle : desktopToggle}
     </div>
   );
 }
