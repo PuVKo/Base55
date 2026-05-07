@@ -50,6 +50,8 @@
 
   .content-narrow {
     max-width: 100%;
+    min-width: 0;
+    width: 100%;
   }
 
   .dash-hero-title {
@@ -77,6 +79,13 @@
 
   .dash-two-col {
     grid-template-columns: 1fr;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .dash-two-col > .card {
+    min-width: 0;
+    max-width: 100%;
   }
 
   .src-legend {
@@ -85,25 +94,79 @@
 
   /* 12 month bars: scroll horizontally instead of crushing layout */
   .bars {
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    grid-template-columns: repeat(12, minmax(22px, 1fr));
-    gap: 4px;
-    padding: 10px 2px 8px;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px 6px;
+    padding: 10px 2px 6px;
     max-width: 100%;
   }
 
+  .bar-col {
+    min-width: 0;
+    gap: 3px;
+  }
+
   .bar-track {
-    height: 100px;
+    height: 84px;
+    width: 100%;
+  }
+
+  .bar-fill {
+    width: 70%;
+    max-width: 22px;
   }
 
   .bar-value {
-    font-size: 9px;
+    display: none;
   }
 
   .bar-label {
-    font-size: 9px;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  .bar-value-mobile {
+    display: block;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  .bar-col .small {
+    display: none;
+  }
+
+  .dyn-card .card-title.big {
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  .dyn-card .card-h {
+    gap: 8px;
+  }
+
+  .dyn-card .card-h > div:first-child {
+    flex: 1 1 56%;
+    min-width: 0;
+  }
+
+  .dyn-card .dyn-total {
+    flex: 0 0 40%;
+    min-width: 118px;
+  }
+
+  .dyn-card .dyn-total .kpi-value {
+    font-size: 19px;
+    line-height: 1.1;
+  }
+
+  .dyn-legend {
+    display: none;
   }
 
   /* Calendar: compact desktop div cells only — mobile month uses button.cal-cell-mobile */

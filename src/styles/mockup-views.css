@@ -67,6 +67,21 @@
   display: grid;
   grid-template-columns: 1fr 1.1fr;
   gap: 12px;
+  min-width: 0;
+  width: 100%;
+}
+
+.dash-two-col > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dashboard-page .card {
+  min-width: 0;
+}
+
+.dashboard-page .card-h > * {
+  min-width: 0;
 }
 
 .badge-count {
@@ -124,11 +139,16 @@ html.dark .badge-count,
 /* Одна строка: дата/время урезаются, чип и сумма не переносятся — сумма не «прыгает» по вертикали */
 .proj-meta-line {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
   font-size: 11px;
   color: var(--text-muted);
+}
+.proj-meta-line .proj-time {
+  font-size: 10px;
+  color: var(--text-faint);
 }
 .proj-row-foot .proj-meta .chip {
   flex-shrink: 0;
@@ -320,6 +340,9 @@ html.light .dashboard-page .dash-upcoming-row:hover,
   font-size: 11px;
   color: var(--text-faint);
   text-transform: lowercase;
+}
+.bar-value-mobile {
+  display: none;
 }
 
 /* ============================================================

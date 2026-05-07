@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { addMonths, endOfMonth, endOfYear, format, getYear, isValid, parseISO, startOfDay, startOfMonth, startOfYear } from 'date-fns';
+import {
+  addMonths,
+  endOfMonth,
+  endOfYear,
+  format,
+  getMonth,
+  getYear,
+  isValid,
+  parseISO,
+  startOfDay,
+  startOfMonth,
+  startOfYear,
+} from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { ArrowRight, Check, MessageSquare, Settings2, TrendingDown, TrendingUp } from 'lucide-react';
 import { formatClientDisplay } from '@/lib/clientField';
@@ -870,7 +882,7 @@ export function DashboardView({
                 Все записи со статусом «{focusedStatusPill.label}», независимо от месяца и периода отчёта
               </p>
             </div>
-            <div className="flex items-center gap-2" ref={statusPickerRef}>
+            <div className="flex items-center gap-2 shrink-0 self-start whitespace-nowrap" ref={statusPickerRef}>
               <div className="relative">
                 <button
                   type="button"
@@ -936,11 +948,10 @@ export function DashboardView({
                       <div className="proj-row-foot">
                         <div className="proj-meta">
                           <span className="proj-meta-line tabular-nums">
-                            <span className="proj-date">
-                              {[formatDateDdMmYyyy(b.date), typeof b.timeRange === 'string' ? b.timeRange.trim() : '']
-                                .filter(Boolean)
-                                .join(' · ')}
-                            </span>
+                            <span className="proj-date">{formatDateDdMmYyyy(b.date)}</span>
+                            {typeof b.timeRange === 'string' && b.timeRange.trim() ? (
+                              <span className="proj-time">{b.timeRange.trim()}</span>
+                            ) : null}
                           </span>
                           <BookingStatusChip fields={fields} status={b.status} />
                         </div>
@@ -1023,8 +1034,15 @@ export function DashboardView({
               const max = globalAmountFieldVisible ? stats.maxBar : Math.max(stats.yearCountMax, 1);
               const hPx =
                 max > 0 && value > 0 ? Math.max(6, (value / max) * 130) : value === 0 ? 2 : 0;
-              const isPeak = max > 0 && value > 0 && value === max;
+              const isSelectedMonth =
+                dashboardPeriod === 'month' &&
+                getYear(month) === getYear(monthCursor) &&
+                getMonth(month) === getMonth(monthCursor);
+              const isPeak = dashboardPeriod === 'month'
+                ? isSelectedMonth
+                : max > 0 && value > 0 && value === max;
               const mLabel = format(month, 'LLL', { locale: ru });
+              const valueLabel = globalAmountFieldVisible ? barTopLabel(sum) : count > 0 ? String(count) : '—';
               return (
                 <div
                   key={month.toISOString()}
@@ -1037,15 +1055,14 @@ export function DashboardView({
                       : `${mLabel}: нет данных`
                   }
                 >
-                  <div className="bar-value">
-                    {globalAmountFieldVisible ? barTopLabel(sum) : count > 0 ? String(count) : '—'}
-                  </div>
+                  <div className="bar-value">{valueLabel}</div>
                   <div className="bar-track">
                     <div className={`bar-fill ${isPeak ? 'peak' : ''}`} style={{ height: `${hPx}px` }}>
                       {isPeak ? <div className="bar-peak-dot" /> : null}
                     </div>
                   </div>
                   <div className="bar-label">{mLabel}</div>
+                  <div className="bar-value-mobile tabular-nums">{valueLabel}</div>
                   <span className="small faint tabular-nums">{count > 0 ? `${count} з.` : '—'}</span>
                 </div>
               );
