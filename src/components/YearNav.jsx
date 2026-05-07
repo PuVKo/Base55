@@ -10,8 +10,9 @@ import { runViewTransition } from '@/viewTransition.js';
  * @param {() => void} props.onNext
  * @param {() => void} props.onToday
  * @param {'default' | 'inline'} [props.variant] inline — одна горизонтальная линия
+ * @param {boolean} [props.showTodayOnMobile] показать кнопку «Сегодня» на мобилке
  */
-export function YearNav({ monthCursor, onPrev, onNext, onToday, variant = 'default' }) {
+export function YearNav({ monthCursor, onPrev, onNext, onToday, variant = 'default', showTodayOnMobile = true }) {
   const label = format(monthCursor, 'yyyy', { locale: ru });
   const inline = variant === 'inline';
   return (
@@ -47,7 +48,7 @@ export function YearNav({ monthCursor, onPrev, onNext, onToday, variant = 'defau
           if (getYear(monthCursor) === getYear(new Date())) return;
           runViewTransition(onToday);
         }}
-        className="hidden md:inline-flex h-8 max-h-8 min-h-8 shrink-0 items-center justify-center rounded-full border border-transparent bg-transparent px-3 text-sm font-medium leading-none tracking-normal text-notion-muted transition-colors hover:bg-notion-hover hover:text-notion-fg touch-manipulation"
+        className={`${showTodayOnMobile ? 'inline-flex' : 'hidden md:inline-flex'} h-8 max-h-8 min-h-8 shrink-0 items-center justify-center rounded-full border border-transparent bg-transparent px-3 text-sm font-medium leading-none tracking-normal text-notion-muted transition-colors hover:bg-notion-hover hover:text-notion-fg touch-manipulation`}
       >
         Сегодня
       </button>

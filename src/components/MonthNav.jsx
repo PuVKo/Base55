@@ -6,8 +6,9 @@ import { runViewTransition } from '@/viewTransition.js';
 /**
  * @param {object} props
  * @param {'default' | 'inline'} [props.variant] inline — одна горизонтальная линия (шапка дашборда и т.п.)
+ * @param {boolean} [props.showTodayOnMobile] показать кнопку «Сегодня» на мобилке
  */
-export function MonthNav({ monthCursor, onPrev, onNext, onToday, variant = 'default' }) {
+export function MonthNav({ monthCursor, onPrev, onNext, onToday, variant = 'default', showTodayOnMobile = true }) {
   const labelFull = format(monthCursor, 'LLLL yyyy', { locale: ru });
   const labelShort = format(monthCursor, 'LLL yyyy', { locale: ru });
   const inline = variant === 'inline';
@@ -47,7 +48,7 @@ export function MonthNav({ monthCursor, onPrev, onNext, onToday, variant = 'defa
           if (monthCursor.getTime() === startOfMonth(new Date()).getTime()) return;
           runViewTransition(onToday);
         }}
-        className="hidden md:inline-flex h-8 max-h-8 min-h-8 shrink-0 items-center justify-center rounded-full border border-transparent bg-transparent px-3 text-sm font-medium leading-none tracking-normal text-notion-muted transition-colors hover:bg-notion-hover hover:text-notion-fg touch-manipulation"
+        className={`${showTodayOnMobile ? 'inline-flex' : 'hidden md:inline-flex'} h-8 max-h-8 min-h-8 shrink-0 items-center justify-center rounded-full border border-transparent bg-transparent px-3 text-sm font-medium leading-none tracking-normal text-notion-muted transition-colors hover:bg-notion-hover hover:text-notion-fg touch-manipulation`}
       >
         Сегодня
       </button>

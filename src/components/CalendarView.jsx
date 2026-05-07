@@ -258,6 +258,7 @@ export function CalendarView({
     const inMonth = isSameMonth(day, monthCursor);
     const dayBookings = bookingsByDate.get(iso) ?? [];
     const today = isToday(day);
+    const dotCount = Math.min(dayBookings.length, 4);
 
     return (
       <button
@@ -271,7 +272,9 @@ export function CalendarView({
         <span className={`cal-num ${today ? '' : ''}`}>{format(day, 'd')}</span>
         <span className="cal-mobile-dot-row" aria-hidden>
           {dayBookings.length > 0 ? (
-            <span className="cal-mobile-booking-dot" />
+            Array.from({ length: dotCount }, (_, idx) => (
+              <span key={`${iso}-dot-${idx}`} className="cal-mobile-booking-dot" />
+            ))
           ) : (
             <span className="cal-mobile-dot-placeholder" />
           )}
@@ -352,11 +355,13 @@ export function CalendarView({
                     {renderBookingButton(b, true, {
                       onOpen: () => {
                         onOpenBooking(b.id);
-                        if (closeDaySheetTimerRef.current) clearTimeout(closeDaySheetTimerRef.current);
-                        closeDaySheetTimerRef.current = setTimeout(() => {
-                          setDaySheetIso(null);
-                          closeDaySheetTimerRef.current = null;
-                        }, 220);
+                        if (!isMobile) {
+                          if (closeDaySheetTimerRef.current) clearTimeout(closeDaySheetTimerRef.current);
+                          closeDaySheetTimerRef.current = setTimeout(() => {
+                            setDaySheetIso(null);
+                            closeDaySheetTimerRef.current = null;
+                          }, 220);
+                        }
                       },
                     })}
                   </li>

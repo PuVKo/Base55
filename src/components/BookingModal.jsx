@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CalendarClock, Trash2, X } from 'lucide-react';
 import { BookingDateInput } from '@/components/BookingDateInput';
 import { ClientFieldInputs } from '@/components/ClientFieldInputs';
@@ -114,12 +115,12 @@ function MoneyIntInput({ value, onChange }) {
  */
 function PropertyRow({ Icon, label, children }) {
   return (
-    <div className="group flex flex-col gap-2 py-2.5 px-2 -mx-1 sm:-mx-1.5 rounded-xl border-l-2 border-l-transparent transition-[border-color] duration-150 ease-out hover:border-l-[color:var(--accent)] motion-reduce:transition-none sm:flex-row sm:items-start sm:gap-3">
+    <div className="group flex flex-col gap-2 py-2.5 px-2 -mx-1 sm:-mx-1.5 rounded-xl border-l-2 border-l-transparent transition-[border-color] duration-150 ease-out sm:hover:border-l-[color:var(--accent)] motion-reduce:transition-none sm:flex-row sm:items-start sm:gap-3">
       <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 sm:min-h-[2.125rem] sm:w-36 sm:flex-none sm:shrink-0">
-        <span className="inline-flex size-5 shrink-0 items-center justify-center text-notion-muted transition-colors duration-150 ease-out group-hover:text-[color:var(--accent)] motion-reduce:transition-none [&_svg]:block">
+        <span className="inline-flex size-5 shrink-0 items-center justify-center text-notion-muted transition-colors duration-150 ease-out sm:group-hover:text-[color:var(--accent)] motion-reduce:transition-none [&_svg]:block">
           <Icon className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />
         </span>
-        <span className="min-w-0 text-sm font-normal leading-none text-notion-muted transition-colors duration-150 ease-out group-hover:text-[color:var(--accent)] motion-reduce:transition-none">
+        <span className="min-w-0 text-sm font-normal leading-none text-notion-muted transition-colors duration-150 ease-out sm:group-hover:text-[color:var(--accent)] motion-reduce:transition-none">
           {label}
         </span>
       </div>
@@ -388,7 +389,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
                 className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
                   cur === opt.id
                     ? `${notionPillClasses(opt.color)} ring-2 ring-black/15 dark:ring-white/25`
-                    : 'border-notion-border text-notion-muted hover:bg-notion-hover'
+                    : 'border-notion-border text-notion-muted sm:hover:bg-notion-hover'
                 }`}
               >
                 {opt.label}
@@ -411,7 +412,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
                 className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
                   selected.has(opt.id)
                     ? `${notionPillClasses(opt.color)} ring-2 ring-black/15 dark:ring-white/25`
-                    : 'border-notion-border text-notion-muted hover:bg-notion-hover'
+                    : 'border-notion-border text-notion-muted sm:hover:bg-notion-hover'
                 }`}
               >
                 {opt.label}
@@ -433,7 +434,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
                 className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
                   cur === opt.id
                     ? `${notionPillClasses(opt.color)} ring-2 ring-black/15 dark:ring-white/25`
-                    : 'border-notion-border text-notion-muted hover:bg-notion-hover'
+                    : 'border-notion-border text-notion-muted sm:hover:bg-notion-hover'
                 }`}
               >
                 {opt.label}
@@ -457,7 +458,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
                 className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
                   tagIds.includes(opt.id)
                     ? `${notionPillClasses(opt.color)} ring-2 ring-black/15 dark:ring-white/25`
-                    : 'border-notion-border text-notion-muted hover:bg-notion-hover'
+                    : 'border-notion-border text-notion-muted sm:hover:bg-notion-hover'
                 }`}
               >
                 {opt.label}
@@ -479,7 +480,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
                 className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
                   cur === opt.id
                     ? `${notionPillClasses(opt.color)} ring-2 ring-black/15 dark:ring-white/25`
-                    : 'border-notion-border text-notion-muted hover:bg-notion-hover'
+                    : 'border-notion-border text-notion-muted sm:hover:bg-notion-hover'
                 }`}
               >
                 {opt.label}
@@ -508,7 +509,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
                     <button
                       type="button"
                       onClick={() => removeComment(f.key, c.id)}
-                      className="shrink-0 p-1.5 rounded-md text-notion-muted hover:bg-red-500/10 hover:text-red-600 dark:hover:bg-rose-950/50 dark:hover:text-rose-300 transition-colors touch-manipulation"
+                      className="shrink-0 p-1.5 rounded-md text-notion-muted sm:hover:bg-red-500/10 sm:hover:text-red-600 dark:sm:hover:bg-rose-950/50 dark:sm:hover:text-rose-300 transition-colors touch-manipulation"
                       title="Удалить комментарий"
                       aria-label="Удалить комментарий"
                     >
@@ -539,7 +540,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
               <button
                 type="button"
                 onClick={() => addComment(f.key)}
-                className="px-3 py-2 rounded-lg border border-[color:var(--accent-soft-strong)] bg-[var(--accent-soft)] text-sm font-semibold text-[color:var(--accent)] hover:bg-[color:rgba(255,156,77,0.22)] hover:border-[color:var(--accent)]/35 transition-colors shrink-0 dark:bg-[color:rgba(255,122,26,0.14)] dark:hover:bg-[color:rgba(255,156,77,0.2)]"
+                className="px-3 py-2 rounded-lg border border-[color:var(--accent-soft-strong)] bg-[var(--accent-soft)] text-sm font-semibold text-[color:var(--accent)] sm:hover:bg-[color:rgba(255,156,77,0.22)] sm:hover:border-[color:var(--accent)]/35 transition-colors shrink-0 dark:bg-[color:rgba(255,122,26,0.14)] dark:sm:hover:bg-[color:rgba(255,156,77,0.2)]"
               >
                 Добавить
               </button>
@@ -567,7 +568,9 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
   const titlePreview =
     typeof draft.title === 'string' && draft.title.trim() ? draft.title.trim() : 'Без названия';
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
       className={`booking-modal-root fixed inset-0 z-[220] flex flex-col sm:items-center sm:justify-center sm:p-4 pt-[env(safe-area-inset-top)] sm:pt-4 bg-black/55 backdrop-blur-sm dark:bg-black/65 ${
         closing ? 'is-closing' : ''
@@ -601,7 +604,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
           <button
             type="button"
             onClick={() => closeWithAnimation()}
-            className="inline-flex items-center justify-center rounded-xl border border-notion-border p-2 text-notion-muted hover:bg-notion-hover hover:text-notion-fg hover:border-[color:var(--accent)]/40 shrink-0 touch-manipulation transition-colors"
+            className="inline-flex items-center justify-center rounded-xl border border-notion-border p-2 text-notion-muted sm:hover:bg-notion-hover sm:hover:text-notion-fg sm:hover:border-[color:var(--accent)]/40 shrink-0 touch-manipulation transition-colors"
             aria-label="Закрыть"
           >
             <X className="w-5 h-5" />
@@ -615,7 +618,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
             ))}
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row sm:flex-wrap gap-2 pt-5 mt-2 border-t border-notion-border/90">
+          <div className="flex flex-col-reverse sm:flex-row sm:flex-wrap gap-2 pt-5 mt-2">
             {canDelete ? (
               <button
                 type="button"
@@ -628,7 +631,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
                     /* toast в App */
                   }
                 }}
-                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl text-sm font-medium text-red-600 hover:bg-red-500/10 sm:ml-auto transition-colors touch-manipulation dark:text-red-300 dark:hover:bg-red-950/45"
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl text-sm font-medium text-red-600 sm:hover:bg-red-500/10 sm:ml-auto transition-colors touch-manipulation dark:text-red-300 dark:sm:hover:bg-red-950/45"
               >
                 Удалить
               </button>
@@ -636,6 +639,7 @@ export function BookingModal({ open, booking, onSave, onFlushSync, onClose, onDe
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

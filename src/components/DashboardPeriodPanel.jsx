@@ -95,6 +95,21 @@ export function DashboardMobileOverflowMenu({
     setOpen(false);
   }
 
+  function jumpToCurrentPeriod() {
+    if (dashboardPeriod === 'all') {
+      setMonthCursor(() => startOfMonth(new Date()));
+      setOpen(false);
+      return;
+    }
+    if (dashboardPeriod === 'year') {
+      setMonthCursor(() => startOfMonth(startOfYear(new Date())));
+      setOpen(false);
+      return;
+    }
+    setMonthCursor(() => startOfMonth(new Date()));
+    setOpen(false);
+  }
+
   const menuPanel =
     open &&
     typeof document !== 'undefined' &&
@@ -130,6 +145,14 @@ export function DashboardMobileOverflowMenu({
             {label}
           </button>
         ))}
+        <button
+          type="button"
+          role="menuitem"
+          className="mt-1 flex w-full items-center px-2.5 py-2 text-left text-sm text-notion-fg hover:bg-notion-hover"
+          onClick={jumpToCurrentPeriod}
+        >
+          Сегодня
+        </button>
         {themeInMenu && clientUi && updateClientUi ? (
           <>
             <div className="my-1 h-px bg-notion-border/80" role="separator" />
@@ -232,6 +255,7 @@ export function DashboardPeriodTopRow({
       {dashboardPeriod === 'month' ? (
         <MonthNav
           variant="inline"
+          showTodayOnMobile={false}
           monthCursor={monthCursor}
           onPrev={() => setMonthCursor((c) => addMonths(c, -1))}
           onNext={() => setMonthCursor((c) => addMonths(c, 1))}
@@ -241,6 +265,7 @@ export function DashboardPeriodTopRow({
       {dashboardPeriod === 'year' ? (
         <YearNav
           variant="inline"
+          showTodayOnMobile={false}
           monthCursor={monthCursor}
           onPrev={() => setMonthCursor((c) => addYears(c, -1))}
           onNext={() => setMonthCursor((c) => addYears(c, 1))}
